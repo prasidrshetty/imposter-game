@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Impostor — Party Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<style>
+  :root {
+    --bg: #08090f;
+    --card: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.1);
+    --purple: #a855f7;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --pink: #ec4899;
+    --text: #fff;
+    --muted: rgba(255,255,255,0.4);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  /* Canvas BG */
+  #bgCanvas {
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    width:100%; height:100%;
+  }
+
+  /* Screens */
+  .screen {
+    position:relative; z-index:1; width:100%; max-width:480px;
+    padding:24px 20px; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .screen.hidden { display:none !important; }
+
+  /* Typography */
+  .title-giant {
+    font-family:'Bebas Neue', cursive;
+    font-size: clamp(64px, 18vw, 100px);
+    letter-spacing: 4px; line-height:1;
+    background: linear-gradient(135deg, #fff 0%, #a855f7 45%, #3b82f6 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 30px rgba(168,85,247,0.5));
+  }
+  .title-big {
+    font-family:'Bebas Neue', cursive;
+    font-size: clamp(36px,10vw,56px); letter-spacing:3px;
+  }
+  .subtitle { font-size:14px; color:var(--muted); letter-spacing:0.5px; }
+
+  /* Cards */
+  .card {
+    background: var(--card); border:1px solid var(--border);
+    border-radius:24px; padding:28px 24px;
+    backdrop-filter: blur(20px);
+    width:100%;
+  }
+  .card-label {
+    font-size:11px; text-transform:uppercase; letter-spacing:2px;
+    color:var(--muted); margin-bottom:10px;
+  }
+
+  /* Inputs */
+  input[type=text], input[type=number] {
+    width:100%; background:rgba(255,255,255,0.06);
+    border:1px solid var(--border); border-radius:14px;
+    padding:14px 18px; color:#fff; font-size:16px;
+    font-family:'Nunito',sans-serif; font-weight:700;
+    outline:none; transition:border 0.2s;
+  }
+  input[type=text]:focus, input[type=number]:focus { border-color:var(--purple); }
+  input[type=text]::placeholder { color:rgba(255,255,255,0.2); font-weight:400; }
+  input[type=range] { width:100%; accent-color:var(--purple); height:4px; }
+  input[type=number] { -moz-appearance:textfield; text-align:center; }
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; }
+
+  /* Buttons */
+  .btn {
+    width:100%; padding:16px; border-radius:16px; border:none;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:16px;
+    cursor:pointer; letter-spacing:0.5px;
+    transition: all 0.2s ease; position:relative; overflow:hidden;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    color:#fff; box-shadow: 0 8px 32px rgba(168,85,247,0.4);
+  }
+  .btn-primary:hover { box-shadow: 0 12px 40px rgba(168,85,247,0.6); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.07); color:#fff;
+    border:1px solid var(--border);
+  }
+  .btn-green {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color:#fff; box-shadow: 0 8px 32px rgba(34,197,94,0.4);
+  }
+  .btn-red {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color:#fff; box-shadow: 0 8px 32px rgba(239,68,68,0.4);
+  }
+  .btn-blue {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color:#fff; box-shadow: 0 8px 32px rgba(59,130,246,0.4);
+  }
+  .btn-yellow {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color:#fff; box-shadow: 0 8px 32px rgba(245,158,11,0.4);
+  }
+  .btn-sm { padding:10px 20px; font-size:14px; border-radius:12px; width:auto; }
+  .btn-icon { font-size:20px; margin-right:8px; }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+  /* Choice Cards (Home) */
+  .choice-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; width:100%; }
+  .choice-card {
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius:22px; padding:28px 16px; cursor:pointer;
+    text-align:center; transition:all 0.25s;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .choice-card:active { transform:scale(0.96); }
+  .choice-card.purple:hover, .choice-card.purple:focus { background:rgba(168,85,247,0.15); border-color:rgba(168,85,247,0.5); box-shadow:0 16px 48px rgba(168,85,247,0.2); }
+  .choice-card.blue:hover, .choice-card.blue:focus { background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.5); box-shadow:0 16px 48px rgba(59,130,246,0.2); }
+  .choice-icon { font-size:48px; }
+  .choice-title { font-family:'Bebas Neue',cursive; font-size:22px; letter-spacing:2px; }
+  .choice-card.purple .choice-title { color:var(--purple); }
+  .choice-card.blue .choice-title { color:var(--blue); }
+  .choice-desc { font-size:12px; color:var(--muted); }
+
+  /* Code display */
+  .code-display {
+    font-family:'Bebas Neue',cursive; font-size:clamp(48px,14vw,72px);
+    letter-spacing:12px; color:#fff;
+    text-shadow:0 0 40px rgba(168,85,247,0.8);
+    background:rgba(168,85,247,0.1); border:2px solid rgba(168,85,247,0.3);
+    border-radius:20px; padding:20px 28px; text-align:center; width:100%;
+  }
+
+  /* Player list */
+  .player-item {
+    display:flex; align-items:center; gap:12px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+    border-radius:14px; padding:12px 16px;
+    animation:slideUp 0.3s ease;
+  }
+  .player-avatar {
+    width:40px; height:40px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; font-size:16px; color:#fff; flex-shrink:0;
+  }
+  .player-name { font-weight:700; font-size:15px; }
+  .player-badge { font-size:11px; color:var(--yellow); }
+  .player-status { margin-left:auto; font-size:18px; }
+
+  /* Word reveal */
+  .word-card {
+    border-radius:28px; padding:40px 32px; text-align:center; width:100%;
+  }
+  .word-card.citizen {
+    background:linear-gradient(135deg,rgba(34,197,94,0.15),rgba(16,163,74,0.08));
+    border:2px solid rgba(34,197,94,0.4);
+    box-shadow:0 0 80px rgba(34,197,94,0.15);
+  }
+  .word-card.impostor {
+    background:linear-gradient(135deg,rgba(239,68,68,0.15),rgba(220,38,38,0.08));
+    border:2px solid rgba(239,68,68,0.4);
+    box-shadow:0 0 80px rgba(239,68,68,0.15);
+  }
+  .word-role { font-family:'Bebas Neue',cursive; font-size:clamp(42px,12vw,64px); letter-spacing:4px; }
+  .word-role.citizen { color:var(--green); }
+  .word-role.impostor { color:var(--red); }
+  .secret-word {
+    font-family:'Bebas Neue',cursive; font-size:clamp(52px,15vw,80px);
+    letter-spacing:3px; color:#fff;
+    text-shadow:0 0 40px rgba(34,197,94,0.8);
+  }
+  .word-hint { font-size:14px; color:var(--muted); margin-top:8px; }
+
+
+
+  /* Vote */
+  .vote-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; }
+  .vote-btn {
+    background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+    border-radius:18px; padding:18px 12px; cursor:pointer;
+    text-align:center; transition:all 0.2s; color:#fff;
+    font-family:'Nunito',sans-serif;
+  }
+  .vote-btn:active { transform:scale(0.95); }
+  .vote-btn.selected {
+    background:rgba(245,158,11,0.2); border:2px solid var(--yellow);
+    box-shadow:0 0 24px rgba(245,158,11,0.3);
+  }
+  .vote-btn.disabled { opacity:0.4; cursor:not-allowed; }
+  .vote-btn-name { font-weight:800; font-size:15px; margin-top:8px; }
+  .vote-count { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  /* Results */
+  .result-hero { font-size:90px; text-align:center; animation:bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+  .result-title { font-family:'Bebas Neue',cursive; font-size:clamp(44px,12vw,64px); letter-spacing:4px; text-align:center; }
+  .result-win { color:var(--yellow); text-shadow:0 0 40px rgba(245,158,11,0.6); }
+  .result-lose { color:var(--red); text-shadow:0 0 40px rgba(239,68,68,0.6); }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:32px; left:50%; transform:translateX(-50%);
+    padding:14px 28px; border-radius:40px; font-weight:700; font-size:14px;
+    z-index:9999; white-space:nowrap; animation:slideUp 0.3s ease;
+    pointer-events:none;
+  }
+  .toast.error { background:linear-gradient(135deg,#ef4444,#dc2626); }
+  .toast.success { background:linear-gradient(135deg,#22c55e,#16a34a); }
+  .toast.info { background:linear-gradient(135deg,#3b82f6,#2563eb); }
+
+  /* Misc */
+  .divider { width:100%; height:1px; background:var(--border); margin:8px 0; }
+  .gap-8 { gap:8px; }
+  .gap-12 { gap:12px; }
+  .gap-16 { gap:16px; }
+  .gap-20 { gap:20px; }
+  .flex-col { display:flex; flex-direction:column; }
+  .flex-row { display:flex; flex-direction:row; }
+  .w-full { width:100%; }
+  .text-center { text-align:center; }
+  .mt-4 { margin-top:4px; }
+  .mt-8 { margin-top:8px; }
+  .mt-12 { margin-top:12px; }
+  .mt-16 { margin-top:16px; }
+  .mt-20 { margin-top:20px; }
+  .mt-24 { margin-top:24px; }
+  .mb-4 { margin-bottom:4px; }
+  .mb-8 { margin-bottom:8px; }
+  .mb-16 { margin-bottom:16px; }
+  .mb-24 { margin-bottom:24px; }
+
+  /* Firebase setup */
+  .setup-box {
+    background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.3);
+    border-radius:18px; padding:20px;
+  }
+  .setup-box textarea {
+    width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);
+    border-radius:10px; padding:12px; color:#fff; font-family:monospace;
+    font-size:12px; resize:vertical; min-height:120px; outline:none;
+  }
+
+  /* Category chips */
+  .chip-grid { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip {
+    padding:6px 14px; border-radius:20px; font-size:13px; font-weight:700;
+    cursor:pointer; transition:all 0.2s; border:1px solid transparent;
+  }
+  .chip.off { background:rgba(255,255,255,0.06); color:var(--muted); border-color:rgba(255,255,255,0.1); }
+  .chip.on { background:rgba(168,85,247,0.2); color:var(--purple); border-color:var(--purple); }
+
+  /* Category info box */
+  .category-info {
+    display:flex; align-items:center; gap:12px;
+    background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.2);
+    border-radius:14px; padding:14px 18px;
+  }
+
+  /* Waiting screen pulse */
+  .pulse-ring {
+    width:100px; height:100px; border-radius:50%;
+    border:3px solid var(--purple);
+    animation:pulseRing 1.5s ease-in-out infinite;
+    display:flex; align-items:center; justify-content:center;
+    font-size:40px; margin:0 auto;
+  }
+
+  /* Shimmer on word reveal */
+  .shimmer-reveal { animation:shimmer 0.6s ease; }
+
+  @keyframes slideUp { from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none} }
+  @keyframes bounceIn { from{transform:scale(0);opacity:0} 60%{transform:scale(1.2)} to{transform:scale(1);opacity:1} }
+  @keyframes pulseRing { 0%,100%{box-shadow:0 0 0 0 rgba(168,85,247,0.4)} 50%{box-shadow:0 0 0 20px rgba(168,85,247,0)} }
+  @keyframes shimmer { 0%{filter:brightness(3)} 100%{filter:brightness(1)} }
+  @keyframes confettiFall { to{transform:translateY(110vh) rotate(720deg);opacity:0} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .spin { animation:spin 1s linear infinite; }
+
+  /* Scrollable area */
+  .scrollable { overflow-y:auto; max-height:35vh; }
+  .scrollable::-webkit-scrollbar { width:3px; }
+  .scrollable::-webkit-scrollbar-thumb { background:rgba(168,85,247,0.4); border-radius:3px; }
+
+  /* Firebase config modal */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.85);
+    backdrop-filter:blur(8px); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .modal-overlay.hidden { display:none !important; }
+  .modal {
+    background:#12131f; border:1px solid rgba(168,85,247,0.3);
+    border-radius:28px; padding:32px 28px; width:100%; max-width:460px;
+    max-height:90vh; overflow-y:auto;
+  }
+
+  /* Status dot */
+  .status-dot {
+    width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px;
+  }
+  .status-dot.green { background:var(--green); box-shadow:0 0 8px var(--green); }
+  .status-dot.red { background:var(--red); }
+  .status-dot.yellow { background:var(--yellow); animation:pulseRing 1s infinite; }
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<!-- ═══════════════════ FIREBASE SETUP MODAL ═══════════════════ -->
+<div class="modal-overlay hidden" id="firebaseModal">
+  <div class="modal">
+    <div style="font-family:'Bebas Neue',cursive;font-size:32px;letter-spacing:3px;color:var(--blue);margin-bottom:8px;">FIREBASE SETUP</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">
+      To play across multiple phones, paste your Firebase config below.<br>
+      <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);">Get free config at console.firebase.google.com →</a>
+    </p>
+    <div class="setup-box">
+      <p class="card-label" style="margin-bottom:8px;">Paste your firebaseConfig object:</p>
+      <textarea id="firebaseConfigInput" placeholder='const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "your-app.firebaseapp.com",
+  databaseURL: "https://your-app-default-rtdb.firebaseio.com",
+  projectId: "your-app",
+  storageBucket: "your-app.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123..."
+};'></textarea>
+    </div>
+    <div class="flex-col gap-12 mt-16">
+      <button class="btn btn-blue" onclick="applyFirebaseConfig()">🔥 Connect Firebase</button>
+      <button class="btn btn-secondary" onclick="closeFirebaseModal()">Use Demo Mode (same device)</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:12px;text-align:center;">Demo mode works on one device only. Firebase enables cross-phone play.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN: HOME ═══════════════════ -->
+<div class="screen" id="screen-home">
+  <div style="text-align:center;margin-bottom:8px;">
+    <div style="font-size:12px;letter-spacing:5px;color:var(--purple);text-transform:uppercase;opacity:0.8;margin-bottom:12px;">🕵️ Party Game</div>
+    <div class="title-giant">IMPOSTOR</div>
+    <p class="subtitle mt-8">Find the spy before it's too late</p>
+  </div>
+
+  <!-- Firebase status -->
+  <div style="display:flex;align-items:center;gap:8px;margin:20px 0 28px;font-size:13px;color:var(--muted);">
+    <span class="status-dot" id="fbStatusDot" style="background:var(--yellow);"></span>
+    <span id="fbStatusText">Not connected — <span style="color:var(--blue);cursor:pointer;text-decoration:underline;" onclick="openFirebaseModal()">Setup Firebase for multiplayer</span></span>
+  </div>
+
+  <div class="choice-grid">
+    <button class="choice-card purple" onclick="goTo('create')">
+      <div class="choice-icon">🏠</div>
+      <div class="choice-title">Create</div>
+      <div class="choice-desc">Host a game room</div>
+    </button>
+    <button class="choice-card blue" onclick="goTo('join')">
+      <div class="choice-icon">🔑</div>
+      <div class="choice-title">Join</div>
+      <div class="choice-desc">Enter room code</div>
+    </button>
+  </div>
+
+  <div style="display:flex;gap:32px;justify-content:center;margin-top:36px;">
+    <div style="text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:28px;color:#fff;">8+</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Categories</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:28px;color:#fff;">100+</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Word Pairs</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:28px;color:#fff;">3–15</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Players</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN: CREATE ROOM ═══════════════════ -->
+<div class="screen hidden flex-col gap-16" id="screen-create" style="justify-content:flex-start;padding-top:48px;">
+  <div>
+    <button onclick="goTo('home')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-family:'Nunito',sans-serif;font-size:14px;padding:0;margin-bottom:16px;">← Back</button>
+    <div class="title-big" style="color:var(--purple);">CREATE ROOM</div>
+    <p class="subtitle mt-4">Set up the game for your crew</p>
+  </div>
+
+  <div class="card flex-col gap-16">
+    <div>
+      <div class="card-label">Your Name</div>
+      <input type="text" id="createName" placeholder="Enter your name" maxlength="20" onkeydown="if(event.key==='Enter')createRoom()"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="card-label">Impostors</div>
+        <div style="display:flex;align-items:center;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+          <button onclick="changeImpostors(-1)" style="background:none;border:none;color:#fff;font-size:22px;font-weight:900;width:44px;height:52px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">−</button>
+          <div style="flex:1;text-align:center;font-family:'Bebas Neue',cursive;font-size:32px;letter-spacing:2px;color:#fff;line-height:52px;" id="impostorCount">1</div>
+          <button onclick="changeImpostors(1)" style="background:none;border:none;color:#fff;font-size:22px;font-weight:900;width:44px;height:52px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">+</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">Min 1</div>
+      </div>
+      <div>
+        <div class="card-label">Max Players</div>
+        <div style="display:flex;align-items:center;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+          <button onclick="changeMaxPlayers(-1)" style="background:none;border:none;color:#fff;font-size:22px;font-weight:900;width:44px;height:52px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">−</button>
+          <div style="flex:1;text-align:center;font-family:'Bebas Neue',cursive;font-size:32px;letter-spacing:2px;color:#fff;line-height:52px;" id="maxPlayersCount">6</div>
+          <button onclick="changeMaxPlayers(1)" style="background:none;border:none;color:#fff;font-size:22px;font-weight:900;width:44px;height:52px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">+</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">Min 3 · Max 15</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Word Categories -->
+  <div class="card flex-col gap-12">
+    <div class="card-label">Word Categories</div>
+    <p style="font-size:12px;color:var(--muted);margin-top:-4px;">Pick which themes to play. Words are assigned secretly when game starts — even you won't know them until reveal!</p>
+    <div class="chip-grid" id="categoryChips"></div>
+    <div class="category-info">
+      <span style="font-size:28px;" id="categoryInfoEmoji">🎲</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff;" id="categoryInfoText">3 categories selected</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Words will be randomly picked at game start</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="createRoom()">
+    <span class="btn-icon">🚀</span> Create Room
+  </button>
+</div>
+
+<!-- ═══════════════════ SCREEN: JOIN ROOM ═══════════════════ -->
+<div class="screen hidden flex-col gap-20" id="screen-join">
+  <div>
+    <button onclick="goTo('home')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-family:'Nunito',sans-serif;font-size:14px;padding:0;margin-bottom:16px;">← Back</button>
+    <div class="title-big" style="color:var(--blue);">JOIN ROOM</div>
+    <p class="subtitle mt-4">Enter the code your host shared</p>
+  </div>
+
+  <div class="card flex-col gap-16">
+    <div>
+      <div class="card-label">Your Name</div>
+      <input type="text" id="joinName" placeholder="Enter your name" maxlength="20"/>
+    </div>
+    <div>
+      <div class="card-label">Room Code</div>
+      <input type="text" id="joinCode" placeholder="e.g. A3X7K2" maxlength="6"
+        style="font-family:'Bebas Neue',cursive;font-size:32px;letter-spacing:8px;text-align:center;text-transform:uppercase;"
+        oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')joinRoom()"/>
+    </div>
+  </div>
+
+  <button class="btn btn-blue" onclick="joinRoom()">
+    <span class="btn-icon">🔑</span> Join Game
+  </button>
+</div>
+
+<!-- ═══════════════════ SCREEN: LOBBY ═══════════════════ -->
+<div class="screen hidden flex-col gap-16" id="screen-lobby" style="justify-content:flex-start;padding-top:32px;">
+  <div style="text-align:center;">
+    <div class="card-label">Room Code</div>
+    <div class="code-display" id="lobbyCode">------</div>
+    <button onclick="copyCode()" style="background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:10px;padding:8px 20px;color:var(--muted);cursor:pointer;font-family:'Nunito',sans-serif;font-size:13px;margin-top:10px;" id="copyBtn">📋 Copy Code</button>
+    <div style="margin-top:10px;font-size:12px;color:var(--muted);">Created by <span id="lobbyHostName" style="color:var(--purple);font-weight:700;"></span> 👑</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="card-label" style="margin:0;">Players</div>
+      <div style="font-size:13px;color:var(--purple);" id="playerCountLabel">0 joined</div>
+    </div>
+    <div class="flex-col gap-8 scrollable" id="playerList"></div>
+    <div style="margin-top:14px;text-align:center;font-size:13px;color:var(--muted);" id="waitingMsg">
+      <span class="spin" style="display:inline-block;margin-right:6px;">⟳</span> Waiting for players...
+    </div>
+  </div>
+
+  <!-- Settings summary -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;" id="settingsBadges"></div>
+
+  <div id="hostControls" class="hidden">
+    <button class="btn btn-green" onclick="startGame()" id="startBtn">
+      <span class="btn-icon">🎮</span> Start Game
+    </button>
+    <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px;">Need at least 3 players</p>
+  </div>
+  <div id="guestWaiting" class="hidden" style="text-align:center;color:var(--muted);font-size:14px;">
+    ⏳ Waiting for host to start the game...
+  </div>
+
+  <button onclick="leaveRoom()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:8px;font-family:'Nunito',sans-serif;">Leave Room</button>
+</div>
+
+<!-- ═══════════════════ SCREEN: WORD REVEAL ═══════════════════ -->
+<div class="screen hidden" id="screen-reveal" style="gap:20px;">
+  <div style="text-align:center;">
+    <div class="card-label">Round <span id="revealRound">1</span></div>
+    <div class="title-big" style="color:var(--yellow);">YOUR ROLE</div>
+    <p class="subtitle mt-4">Keep your screen hidden from others!</p>
+  </div>
+
+  <!-- Live players strip -->
+  <div style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px 16px;">
+    <div class="card-label" style="margin-bottom:10px;">Players in this round</div>
+    <div id="revealPlayerStrip" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+
+  <div id="wordRevealCard" class="word-card citizen shimmer-reveal w-full">
+    <div id="revealRoleEmoji" style="font-size:72px;margin-bottom:12px;">👤</div>
+    <div class="word-role citizen" id="revealRoleName">CITIZEN</div>
+    <div style="width:60px;height:2px;background:rgba(255,255,255,0.15);margin:16px auto;"></div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Your word is:</div>
+    <div class="secret-word" id="revealWord">CAR</div>
+    <div class="word-hint" id="revealHint">Describe it without saying the word!</div>
+  </div>
+
+  <button class="btn btn-primary w-full" onclick="playerReady()">
+    ✅ I've Seen My Word — I'm Ready
+  </button>
+
+  <div style="text-align:center;font-size:13px;color:var(--muted);" id="readyCount">0 / 0 players ready</div>
+</div>
+
+<!-- ═══════════════════ SCREEN: DISCUSSION ═══════════════════ -->
+<div class="screen hidden" id="screen-discussion" style="justify-content:flex-start;padding-top:28px;gap:16px;">
+  <div style="width:100%;">
+    <div class="card-label">Round <span id="discRound">1</span></div>
+    <div class="title-big" style="font-size:32px;">DISCUSSION</div>
+  </div>
+
+  <!-- Live players strip -->
+  <div style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px 16px;">
+    <div class="card-label" style="margin-bottom:10px;">Players in this round</div>
+    <div id="discPlayerStrip" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+
+  <!-- Role reminder badge -->
+  <div id="myRoleBadge" style="width:100%;padding:10px 16px;border-radius:14px;text-align:center;font-size:13px;font-weight:700;"></div>
+
+  <!-- Instructions -->
+  <div class="card" style="padding:16px 20px;">
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;">
+      🗣️ Take turns giving one clue about your word.<br>
+      🚫 Don't say the exact word!<br>
+      🕵️ Find who gave the most suspicious clue.
+    </div>
+  </div>
+
+  <!-- Player order -->
+  <div class="card" style="padding:16px 20px;">
+    <div class="card-label">Speaking Order</div>
+    <div class="flex-col gap-8 mt-8" id="discussionOrder"></div>
+  </div>
+
+  <!-- Host stop game button -->
+  <div id="hostVoteBtn">
+    <div style="display:flex;align-items:center;gap:10px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:14px;padding:10px 16px;margin-bottom:12px;">
+      <span style="font-size:18px;">👑</span>
+      <span style="font-size:13px;color:rgba(168,85,247,0.8);">You created this room — only you can stop the game</span>
+    </div>
+    <button class="btn btn-red w-full" onclick="hostStopGame()">
+      🛑 Stop Discussion — Go to Vote
+    </button>
+  </div>
+  <div id="guestVoteWait" class="hidden" style="text-align:center;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;font-size:14px;color:var(--muted);">
+    <div id="discHostName" style="color:var(--purple);font-weight:700;font-size:15px;margin-bottom:4px;"></div>
+    ⏳ Waiting for host to stop discussion & start voting...
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN: VOTING ═══════════════════ -->
+<div class="screen hidden" id="screen-vote" style="justify-content:flex-start;padding-top:28px;gap:16px;">
+  <div style="text-align:center;width:100%;">
+    <div class="card-label">Round <span id="voteRound">1</span></div>
+    <div class="title-big" style="color:var(--yellow);">VOTE</div>
+    <p class="subtitle">Who is the impostor? Tap to vote</p>
+  </div>
+
+  <!-- Live players strip -->
+  <div style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px 16px;">
+    <div class="card-label" style="margin-bottom:10px;">Players in this round</div>
+    <div id="votePlayerStrip" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+
+  <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:16px;padding:12px 18px;width:100%;text-align:center;">
+    <div style="font-size:13px;color:rgba(245,158,11,0.8);" id="voteStatus">Waiting for everyone to vote...</div>
+    <div style="margin-top:6px;height:4px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">
+      <div id="voteProgressBar" style="height:100%;background:var(--yellow);border-radius:4px;width:0%;transition:width 0.4s ease;"></div>
+    </div>
+  </div>
+
+  <div class="vote-grid" id="voteGrid"></div>
+
+  <div id="myVoteConfirmed" class="hidden" style="text-align:center;padding:14px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:16px;font-size:14px;color:var(--green);width:100%;">
+    ✅ Your vote is in! Waiting for others...
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN: RESULTS ═══════════════════ -->
+<div class="screen hidden" id="screen-results" style="gap:0;padding:0;justify-content:flex-start;">
+  <div id="confettiContainer" style="position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;"></div>
+
+  <!-- Personal outcome hero banner -->
+  <div id="personalOutcomeBanner" style="width:100%;padding:40px 24px 28px;text-align:center;position:relative;z-index:1;">
+    <div id="resultHeroEmoji" style="font-size:80px;margin-bottom:12px;animation:bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1);"></div>
+    <div id="resultHeroTitle" style="font-family:'Bebas Neue',cursive;font-size:clamp(36px,10vw,52px);letter-spacing:4px;line-height:1;"></div>
+    <div id="resultHeroSub" style="font-size:14px;margin-top:10px;opacity:0.7;line-height:1.5;"></div>
+  </div>
+
+  <div style="width:100%;padding:0 20px 100px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:1;">
+
+    <!-- Who voted correctly -->
+    <div id="correctVotersCard" class="card" style="display:none;">
+      <div class="card-label" style="margin-bottom:12px;">🎯 Correct Voters</div>
+      <div id="correctVotersList" class="flex-col gap-8"></div>
+    </div>
+
+    <!-- Truth reveal -->
+    <div class="card">
+      <div class="card-label" style="margin-bottom:12px;">🔍 The Truth</div>
+      <div style="display:flex;align-items:center;gap:0;justify-content:center;background:rgba(255,255,255,0.03);border-radius:14px;overflow:hidden;">
+        <div style="flex:1;padding:16px;text-align:center;border-right:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Citizens had</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:30px;color:var(--green);letter-spacing:2px;" id="revealCitizenWord">CAR</div>
+        </div>
+        <div style="flex:1;padding:16px;text-align:center;">
+          <div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Impostor had</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:30px;color:var(--red);letter-spacing:2px;" id="revealImpostorWord">BIKE</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- All players with roles + vote -->
+    <div class="card">
+      <div class="card-label" style="margin-bottom:12px;">👥 All Players</div>
+      <div class="flex-col gap-8" id="allPlayersReveal"></div>
+    </div>
+
+    <!-- Action buttons -->
+    <div style="display:flex;gap:12px;width:100%;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="goHome()">🏠 Home</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="playAgain()" id="playAgainBtn">🔄 Play Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ JAVASCRIPT ═══════════════════ -->
+<script>
+// ─── Word Pairs Database ─────────────────────────────────────────────────────
+const WORD_PAIRS = {
+  Vehicles: [["Car","Bike"],["Bus","Train"],["Plane","Helicopter"],["Ship","Boat"],["Truck","Van"],["Motorcycle","Scooter"]],
+  Food: [["Pizza","Burger"],["Sushi","Ramen"],["Cake","Pie"],["Coffee","Tea"],["Rice","Bread"],["Mango","Orange"],["Ice Cream","Gelato"]],
+  Animals: [["Dog","Cat"],["Lion","Tiger"],["Elephant","Rhino"],["Eagle","Hawk"],["Dolphin","Whale"],["Rabbit","Squirrel"],["Monkey","Gorilla"]],
+  Sports: [["Cricket","Baseball"],["Football","Rugby"],["Tennis","Badminton"],["Swimming","Diving"],["Boxing","Wrestling"],["Golf","Hockey"]],
+  Places: [["Beach","Lake"],["Mountain","Hill"],["City","Town"],["Forest","Jungle"],["Desert","Savanna"],["Castle","Palace"]],
+  Electronics: [["Phone","Tablet"],["Laptop","Desktop"],["TV","Monitor"],["Camera","Webcam"],["Headphones","Earbuds"],["Keyboard","Mouse"]],
+  Clothes: [["Shirt","Jacket"],["Shoes","Boots"],["Hat","Cap"],["Jeans","Trousers"],["Dress","Skirt"],["Gloves","Mittens"]],
+  Nature: [["Rain","Snow"],["Sun","Moon"],["River","Stream"],["Tree","Bush"],["Rose","Lily"],["Gold","Silver"]],
+};
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let db = null;
+let roomRef = null;
+let myId = null;
+let myName = "";
+let isHost = false;
+let currentRoom = null;
+let selectedCategories = ["Vehicles","Food","Animals"];
+let myVote = null;
+
+// ─── Firebase ────────────────────────────────────────────────────────────────
+let firebaseConnected = false;
+
+// In-memory fallback DB
+const memDB = {};
+const memListeners = {};
+
+const storage = {
+  set(path, val) {
+    if (firebaseConnected && db) {
+      return db.ref(path).set(val);
+    } else {
+      setNested(memDB, path, val);
+      triggerListeners(path, val);
+      return Promise.resolve();
+    }
+  },
+  update(path, val) {
+    if (firebaseConnected && db) {
+      return db.ref(path).update(val);
+    } else {
+      const cur = getNested(memDB, path) || {};
+      setNested(memDB, path, {...cur, ...val});
+      triggerListeners(path, getNested(memDB, path));
+      return Promise.resolve();
+    }
+  },
+  get(path) {
+    if (firebaseConnected && db) {
+      return db.ref(path).once('value').then(s => s.val());
+    } else {
+      return Promise.resolve(getNested(memDB, path));
+    }
+  },
+  on(path, cb) {
+    if (firebaseConnected && db) {
+      const ref = db.ref(path);
+      ref.on('value', snap => cb(snap.val()));
+      return () => ref.off();
+    } else {
+      if (!memListeners[path]) memListeners[path] = [];
+      memListeners[path].push(cb);
+      cb(getNested(memDB, path));
+      return () => { memListeners[path] = memListeners[path].filter(l => l !== cb); };
+    }
+  },
+  remove(path) {
+    if (firebaseConnected && db) {
+      return db.ref(path).remove();
+    } else {
+      deleteNested(memDB, path);
+      return Promise.resolve();
+    }
+  }
+};
+
+function setNested(obj, path, val) {
+  const parts = path.split('/').filter(Boolean);
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (!cur[parts[i]]) cur[parts[i]] = {};
+    cur = cur[parts[i]];
+  }
+  cur[parts[parts.length - 1]] = val;
+}
+function getNested(obj, path) {
+  return path.split('/').filter(Boolean).reduce((cur, k) => cur && cur[k], obj);
+}
+function deleteNested(obj, path) {
+  const parts = path.split('/').filter(Boolean);
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) cur = cur && cur[parts[i]];
+  if (cur) delete cur[parts[parts.length - 1]];
+}
+function triggerListeners(path, val) {
+  Object.keys(memListeners).forEach(lpath => {
+    if (path.startsWith(lpath) || lpath.startsWith(path)) {
+      memListeners[lpath].forEach(cb => cb(getNested(memDB, lpath)));
+    }
+  });
+}
+
+// ─── UI Helpers ───────────────────────────────────────────────────────────────
+function goTo(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById('screen-' + screen).classList.remove('hidden');
+}
+
+let toastTimer;
+function showToast(msg, type='info') {
+  let t = document.querySelector('.toast');
+  if (t) t.remove();
+  t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.remove(), 3000);
+}
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function genCode() { return Math.random().toString(36).substring(2,8).toUpperCase(); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substring(2,5); }
+
+const AVATAR_COLORS = ['#a855f7','#3b82f6','#22c55e','#ef4444','#f59e0b','#ec4899','#14b8a6','#f97316','#8b5cf6','#06b6d4'];
+function getColor(i) { return AVATAR_COLORS[i % AVATAR_COLORS.length]; }
+
+// ─── Firebase Setup ───────────────────────────────────────────────────────────
+function openFirebaseModal() { document.getElementById('firebaseModal').classList.remove('hidden'); }
+function closeFirebaseModal() { document.getElementById('firebaseModal').classList.add('hidden'); }
+
+function applyFirebaseConfig() {
+  const raw = document.getElementById('firebaseConfigInput').value.trim();
+  try {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Invalid format');
+    const config = eval('(' + match[0] + ')');
+    if (!config.apiKey || !config.databaseURL) throw new Error('Missing apiKey or databaseURL');
+
+    if (firebase.apps.length) firebase.apps.forEach(a => a.delete());
+    firebase.initializeApp(config);
+    db = firebase.database();
+    firebaseConnected = true;
+
+    document.getElementById('fbStatusDot').className = 'status-dot green';
+    document.getElementById('fbStatusText').innerHTML = '<span style="color:var(--green)">🔥 Firebase connected — Cross-phone multiplayer active!</span>';
+    closeFirebaseModal();
+    showToast('Firebase connected! Real multiplayer enabled 🎉', 'success');
+  } catch(e) {
+    showToast('Invalid config: ' + e.message, 'error');
+  }
+}
+
+// ─── Category Chips ───────────────────────────────────────────────────────────
+function renderCategoryChips() {
+  const container = document.getElementById('categoryChips');
+  container.innerHTML = '';
+  Object.keys(WORD_PAIRS).forEach(cat => {
+    const chip = document.createElement('button');
+    chip.className = 'chip ' + (selectedCategories.includes(cat) ? 'on' : 'off');
+    chip.textContent = cat;
+    chip.onclick = () => {
+      if (selectedCategories.includes(cat)) {
+        if (selectedCategories.length > 1) selectedCategories = selectedCategories.filter(c => c !== cat);
+      } else { selectedCategories.push(cat); }
+      renderCategoryChips();
+      updateCategoryInfo();
+    };
+    container.appendChild(chip);
+  });
+}
+
+function updateCategoryInfo() {
+  const count = selectedCategories.length;
+  const emojis = { Vehicles:'🚗', Food:'🍕', Animals:'🐾', Sports:'⚽', Places:'🌍', Electronics:'📱', Clothes:'👕', Nature:'🌿' };
+  const emoji = count === 1 ? (emojis[selectedCategories[0]] || '🎲') : '🎲';
+  document.getElementById('categoryInfoEmoji').textContent = emoji;
+  document.getElementById('categoryInfoText').textContent =
+    count === 1
+      ? `"${selectedCategories[0]}" selected`
+      : `${count} categories selected`;
+}
+
+let impostorValue = 1;
+let maxPlayersValue = 6;
+
+function changeImpostors(delta) {
+  impostorValue = Math.max(1, Math.min(5, impostorValue + delta));
+  document.getElementById('impostorCount').textContent = impostorValue;
+}
+
+function changeMaxPlayers(delta) {
+  maxPlayersValue = Math.max(3, Math.min(15, maxPlayersValue + delta));
+  document.getElementById('maxPlayersCount').textContent = maxPlayersValue;
+}
+async function createRoom() {
+  const name = document.getElementById('createName').value.trim();
+  if (!name) return showToast('Enter your name!', 'error');
+
+  myId = genId();
+  myName = name;
+  isHost = true;
+
+  const code = genCode();
+  const room = {
+    code,
+    hostId: myId,
+    phase: 'lobby',
+    impostors: impostorValue,
+    maxPlayers: maxPlayersValue,
+    categories: selectedCategories,
+    round: 0,
+    players: { [myId]: { name, id: myId, ready: false, vote: null, joinedAt: Date.now() } },
+    citizenWord: '', impostorWord: '', impostorIds: [],
+  };
+
+  await storage.set(`rooms/${code}`, room);
+  listenToRoom(code);
+  goTo('lobby');
+  showToast('Room created! Share the code 🎉', 'success');
+}
+
+// ─── JOIN ROOM ────────────────────────────────────────────────────────────────
+async function joinRoom() {
+  const name = document.getElementById('joinName').value.trim();
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if (!name) return showToast('Enter your name!', 'error');
+  if (!code) return showToast('Enter room code!', 'error');
+
+  const room = await storage.get(`rooms/${code}`);
+  if (!room) return showToast('Room not found!', 'error');
+  if (room.phase !== 'lobby') return showToast('Game already started!', 'error');
+  const currentCount = Object.keys(room.players || {}).length;
+  const maxAllowed = room.maxPlayers || 15;
+  if (currentCount >= maxAllowed) return showToast(`Room is full! (${maxAllowed} players max)`, 'error');
+
+  myId = genId();
+  myName = name;
+  isHost = false;
+
+  await storage.update(`rooms/${code}/players`, {
+    [myId]: { name, id: myId, ready: false, vote: null, joinedAt: Date.now() }
+  });
+
+  listenToRoom(code);
+  goTo('lobby');
+}
+
+// ─── LISTEN TO ROOM ───────────────────────────────────────────────────────────
+let unsubscribe = null;
+function listenToRoom(code) {
+  if (unsubscribe) unsubscribe();
+  unsubscribe = storage.on(`rooms/${code}`, (room) => {
+    if (!room) return;
+    currentRoom = room;
+    handleRoomUpdate(room);
+  });
+}
+
+function handleRoomUpdate(room) {
+  // If I got kicked, go home
+  if (room.kicked && room.kicked[myId]) {
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    currentRoom = null;
+    showToast('You were removed from the room', 'error');
+    goTo('home');
+    return;
+  }
+
+  const phase = room.phase;
+  const currentScreen = [...document.querySelectorAll('.screen')].find(s => !s.classList.contains('hidden'))?.id;
+
+  if (phase === 'lobby') {
+    renderLobby(room);
+    if (currentScreen !== 'screen-lobby') goTo('lobby');
+  }
+  else if (phase === 'reveal') {
+    renderReveal(room);
+    if (currentScreen !== 'screen-reveal') goTo('reveal');
+  }
+  else if (phase === 'discussion') {
+    if (currentScreen !== 'screen-discussion') { renderDiscussion(room); goTo('discussion'); }
+    else renderDiscussion(room);
+  }
+  else if (phase === 'voting') {
+    myVote = null;
+    const confirmed = document.getElementById('myVoteConfirmed');
+    if (confirmed) confirmed.classList.add('hidden');
+    if (currentScreen !== 'screen-vote') { renderVoting(room); goTo('vote'); }
+    else renderVoting(room);
+  }
+  else if (phase === 'results') {
+    if (currentScreen !== 'screen-results') { renderResults(room); goTo('results'); }
+  }
+}
+
+// ─── LOBBY RENDER ─────────────────────────────────────────────────────────────
+function renderLobby(room) {
+  document.getElementById('lobbyCode').textContent = room.code;
+  const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
+  const hostPlayer = players.find(p => p.id === room.hostId);
+  document.getElementById('lobbyHostName').textContent = hostPlayer?.name || 'Host';
+  const maxAllowed = room.maxPlayers || 15;
+  document.getElementById('playerCountLabel').textContent = `${players.length} / ${maxAllowed} joined`;
+
+  const list = document.getElementById('playerList');
+  list.innerHTML = '';
+  players.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'player-item';
+    const isMe = p.id === myId;
+    const isPlayerHost = p.id === room.hostId;
+    const iAmHost = room.hostId === myId;
+
+    div.innerHTML = `
+      <div class="player-avatar" style="background:${getColor(i)}">${p.name[0].toUpperCase()}</div>
+      <div style="flex:1;">
+        <div class="player-name">${p.name}${isMe ? ' <span style="color:var(--muted);font-size:12px;">(You)</span>' : ''}</div>
+        ${isPlayerHost ? '<div class="player-badge">👑 Host</div>' : ''}
+      </div>
+      ${iAmHost && !isPlayerHost && !isMe
+        ? `<button onclick="kickPlayer('${p.id}','${p.name}')"
+            style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);
+            border-radius:10px;padding:5px 12px;color:#ef4444;cursor:pointer;
+            font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;
+            transition:all 0.2s;flex-shrink:0;"
+            onmouseover="this.style.background='rgba(239,68,68,0.3)'"
+            onmouseout="this.style.background='rgba(239,68,68,0.15)'">
+            ✕ Kick
+          </button>`
+        : `<div class="player-status">${isPlayerHost ? '👑' : '✅'}</div>`
+      }
+    `;
+    list.appendChild(div);
+  });
+
+  // Settings badges
+  const badges = document.getElementById('settingsBadges');
+  badges.innerHTML = [
+    `⚡ ${room.impostors} Impostor${room.impostors>1?'s':''}`,
+    `👥 ${room.maxPlayers || 15} Players Max`,
+    `📚 ${(room.categories||[]).length} Categor${(room.categories||[]).length>1?'ies':'y'}`,
+  ].map(b => `<span style="background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--muted);">${b}</span>`).join('');
+
+  if (room.hostId === myId) {
+    document.getElementById('hostControls').classList.remove('hidden');
+    document.getElementById('guestWaiting').classList.add('hidden');
+    document.getElementById('startBtn').disabled = players.length < 3;
+  } else {
+    document.getElementById('hostControls').classList.add('hidden');
+    document.getElementById('guestWaiting').classList.remove('hidden');
+  }
+  document.getElementById('waitingMsg').style.display = players.length >= 3 ? 'none' : 'block';
+}
+
+function copyCode() {
+  const code = currentRoom?.code || '';
+  navigator.clipboard?.writeText(code).catch(()=>{});
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = '✅ Copied!';
+  setTimeout(() => btn.textContent = '📋 Copy Code', 2000);
+}
+
+async function kickPlayer(playerId, playerName) {
+  if (!currentRoom || currentRoom.hostId !== myId) return;
+  // Show confirm toast style inline — no browser confirm() on mobile
+  const confirmed = await showKickConfirm(playerName);
+  if (!confirmed) return;
+  await storage.remove(`rooms/${currentRoom.code}/players/${playerId}`);
+  // Also add to kicked list so their phone redirects home
+  await storage.update(`rooms/${currentRoom.code}/kicked`, { [playerId]: true });
+  showToast(`${playerName} removed from room`, 'info');
+}
+
+function showKickConfirm(name) {
+  return new Promise(resolve => {
+    // Remove any existing confirm
+    const old = document.getElementById('kickConfirmOverlay');
+    if (old) old.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'kickConfirmOverlay';
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);
+      z-index:999;display:flex;align-items:center;justify-content:center;padding:24px;
+    `;
+    overlay.innerHTML = `
+      <div style="background:#12131f;border:1px solid rgba(239,68,68,0.3);border-radius:24px;
+        padding:28px 24px;width:100%;max-width:340px;text-align:center;">
+        <div style="font-size:48px;margin-bottom:12px;">🚪</div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:28px;letter-spacing:2px;color:#ef4444;margin-bottom:8px;">REMOVE PLAYER</div>
+        <div style="font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:24px;line-height:1.5;">
+          Remove <strong style="color:#fff;">${name}</strong> from the room?<br>
+          <span style="font-size:12px;">They won't be able to rejoin.</span>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button id="kickCancel" style="flex:1;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,0.15);
+            background:rgba(255,255,255,0.07);color:#fff;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;font-size:14px;">
+            Cancel
+          </button>
+          <button id="kickConfirm" style="flex:1;padding:14px;border-radius:14px;border:none;
+            background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;cursor:pointer;
+            font-family:'Nunito',sans-serif;font-weight:700;font-size:14px;
+            box-shadow:0 8px 24px rgba(239,68,68,0.4);">
+            ✕ Remove
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('kickConfirm').onclick = () => { overlay.remove(); resolve(true); };
+    document.getElementById('kickCancel').onclick = () => { overlay.remove(); resolve(false); };
+    overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+  });
+}
+
+// ─── START GAME ───────────────────────────────────────────────────────────────
+async function startGame() {
+  const room = currentRoom;
+  if (!room) return;
+  const players = Object.values(room.players || {});
+  if (players.length < 3) return showToast('Need at least 3 players!', 'error');
+
+  const pool = (room.categories||['Vehicles']).flatMap(c => WORD_PAIRS[c] || []);
+  const pair = rand(pool);
+
+  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  const impostorCount = Math.min(room.impostors, Math.floor(players.length / 3));
+  const impostorIds = shuffled.slice(0, impostorCount).map(p => p.id);
+
+  // Reset ready
+  const updatedPlayers = {};
+  players.forEach(p => { updatedPlayers[p.id] = {...p, ready: false, vote: null}; });
+
+  await storage.update(`rooms/${room.code}`, {
+    phase: 'reveal',
+    citizenWord: pair[0],
+    impostorWord: pair[1],
+    impostorIds,
+    players: updatedPlayers,
+    round: (room.round || 0) + 1,
+    votes: {},
+    eliminated: null,
+    kicked: {},
+  });
+}
+
+// ─── PLAYER STRIP ─────────────────────────────────────────────────────────────
+// Shows all players in round with status indicator
+// mode: 'ready' (reveal screen) | 'talking' (discussion) | 'voted' (voting)
+function renderPlayerStrip(containerId, players, votes, mode) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  players.forEach((p, i) => {
+    let statusEmoji = '';
+    let statusColor = 'rgba(255,255,255,0.15)';
+    if (mode === 'ready') {
+      statusEmoji = p.ready ? '✅' : '⏳';
+      statusColor = p.ready ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.06)';
+    } else if (mode === 'talking') {
+      statusEmoji = '';
+      statusColor = p.id === myId ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.06)';
+    } else if (mode === 'voted') {
+      const hasVoted = votes && votes[p.id];
+      statusEmoji = hasVoted ? '🗳️' : '⏳';
+      statusColor = hasVoted ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)';
+    }
+
+    const chip = document.createElement('div');
+    chip.style.cssText = `
+      display:flex;align-items:center;gap:6px;
+      background:${statusColor};
+      border:1px solid ${p.id === myId ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.08)'};
+      border-radius:20px;padding:5px 12px 5px 6px;
+      transition:background 0.3s;
+    `;
+    chip.innerHTML = `
+      <div style="width:24px;height:24px;border-radius:50%;background:${getColor(i)};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:#fff;flex-shrink:0;">${p.name[0].toUpperCase()}</div>
+      <span style="font-size:13px;font-weight:700;color:${p.id === myId ? 'rgba(168,85,247,0.9)' : '#fff'};">${p.name}${p.id === myId ? ' (You)' : ''}</span>
+      ${statusEmoji ? `<span style="font-size:13px;margin-left:2px;">${statusEmoji}</span>` : ''}
+    `;
+    container.appendChild(chip);
+  });
+}
+
+// ─── REVEAL RENDER ────────────────────────────────────────────────────────────
+function renderReveal(room) {
+  const amImpostor = (room.impostorIds || []).includes(myId);
+  const myWord = amImpostor ? room.impostorWord : room.citizenWord;
+
+  document.getElementById('revealRound').textContent = room.round || 1;
+  const card = document.getElementById('wordRevealCard');
+  card.className = 'word-card w-full shimmer-reveal ' + (amImpostor ? 'impostor' : 'citizen');
+  document.getElementById('revealRoleEmoji').textContent = amImpostor ? '🕵️' : '👤';
+  document.getElementById('revealRoleName').textContent = amImpostor ? 'IMPOSTOR' : 'CITIZEN';
+  document.getElementById('revealRoleName').className = 'word-role ' + (amImpostor ? 'impostor' : 'citizen');
+  document.getElementById('revealWord').textContent = amImpostor ? '???' : myWord;
+  document.getElementById('revealWord').style.color = amImpostor ? '#ef4444' : '';
+  document.getElementById('revealHint').textContent = amImpostor
+    ? 'You don\'t know the word. Try to blend in with others!'
+    : `Describe "${myWord}" without saying it!`;
+
+  const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
+  const readyCount = players.filter(p => p.ready).length;
+
+  renderPlayerStrip('revealPlayerStrip', players, null, 'ready');
+
+  document.getElementById('readyCount').textContent = `${readyCount} / ${players.length} players ready`;
+}
+
+async function playerReady() {
+  if (!currentRoom) return;
+  await storage.update(`rooms/${currentRoom.code}/players/${myId}`, { ready: true });
+  document.querySelector('#screen-reveal .btn-primary').disabled = true;
+  document.querySelector('#screen-reveal .btn-primary').textContent = '✅ Waiting for others...';
+
+  // Check if all ready (host decides)
+  const room = await storage.get(`rooms/${currentRoom.code}`);
+  const players = Object.values(room.players || {});
+  const allReady = players.every(p => p.ready);
+  if (allReady && room.hostId === myId) {
+    await storage.update(`rooms/${currentRoom.code}`, { phase: 'discussion' });
+  }
+}
+
+// ─── DISCUSSION RENDER ────────────────────────────────────────────────────────
+function renderDiscussion(room) {
+  document.getElementById('discRound').textContent = room.round || 1;
+
+  const amImpostor = (room.impostorIds || []).includes(myId);
+  const badge = document.getElementById('myRoleBadge');
+  if (amImpostor) {
+    badge.style.background = 'rgba(239,68,68,0.15)';
+    badge.style.border = '1px solid rgba(239,68,68,0.3)';
+    badge.style.color = '#ef4444';
+    badge.innerHTML = '🕵️ You are the <strong>IMPOSTOR</strong> — Blend in, don\'t reveal you don\'t know!';
+  } else {
+    badge.style.background = 'rgba(34,197,94,0.12)';
+    badge.style.border = '1px solid rgba(34,197,94,0.3)';
+    badge.style.color = '#22c55e';
+    badge.innerHTML = `👤 <strong>CITIZEN</strong> — Your word: <span style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;">${room.citizenWord}</span>`;
+  }
+
+  if (currentRoom?.hostId === myId) {
+    document.getElementById('hostVoteBtn').classList.remove('hidden');
+    document.getElementById('guestVoteWait').classList.add('hidden');
+  } else {
+    document.getElementById('hostVoteBtn').classList.add('hidden');
+    document.getElementById('guestVoteWait').classList.remove('hidden');
+    const hostPlayer = players.find(p => p.id === room.hostId);
+    const discHostEl = document.getElementById('discHostName');
+    if (discHostEl) discHostEl.textContent = `👑 ${hostPlayer?.name || 'Host'} is in control`;
+  }
+
+  // Player order
+  const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
+
+  renderPlayerStrip('discPlayerStrip', players, null, 'talking');
+
+  const order = document.getElementById('discussionOrder');
+  order.innerHTML = '';
+  players.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;';
+    div.innerHTML = `
+      <div style="width:26px;height:26px;border-radius:50%;background:${getColor(i)};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex-shrink:0;">${p.name[0]}</div>
+      <span style="font-size:14px;font-weight:700;">${p.name}${p.id===myId?' (You)':''}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted);">${i+1}${['st','nd','rd'][i]||'th'}</span>
+    `;
+    order.appendChild(div);
+  });
+
+}
+
+async function hostStopGame() {
+  if (!currentRoom || currentRoom.hostId !== myId) return;
+  await storage.update(`rooms/${currentRoom.code}`, { phase: 'voting', votes: {} });
+}
+
+async function goToVote() {
+  if (currentRoom?.hostId === myId) {
+    await storage.update(`rooms/${currentRoom.code}`, { phase: 'voting', votes: {} });
+  }
+}
+
+// ─── VOTING RENDER ────────────────────────────────────────────────────────────
+function renderVoting(room) {
+  document.getElementById('voteRound').textContent = room.round || 1;
+  const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
+  const votes = room.votes || {};
+  const totalVotes = Object.keys(votes).length;
+  const iVotedAlready = votes[myId];
+
+  renderPlayerStrip('votePlayerStrip', players, votes, 'voted');
+
+  // Progress bar
+  const pct = players.length > 0 ? (totalVotes / players.length) * 100 : 0;
+  document.getElementById('voteProgressBar').style.width = pct + '%';
+  document.getElementById('voteStatus').textContent = `${totalVotes} / ${players.length} voted`;
+
+  // Show confirmed message if I already voted
+  if (iVotedAlready) {
+    document.getElementById('myVoteConfirmed').classList.remove('hidden');
+  }
+
+  // Build vote grid
+  const grid = document.getElementById('voteGrid');
+  grid.innerHTML = '';
+  players.forEach((p, i) => {
+    const voteCount = Object.values(votes).filter(v => v === p.id).length;
+    const btn = document.createElement('button');
+    const isSelected = iVotedAlready === p.id;
+    const isMe = p.id === myId;
+    btn.className = 'vote-btn' + (isSelected ? ' selected' : '') + (iVotedAlready && !isSelected ? ' disabled' : '');
+    btn.innerHTML = `
+      <div style="width:52px;height:52px;border-radius:50%;background:${getColor(i)};margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;">${p.name[0].toUpperCase()}</div>
+      <div class="vote-btn-name">${p.name}${isMe ? ' (You)' : ''}</div>
+      <div class="vote-count">${voteCount > 0 ? '🔴'.repeat(Math.min(voteCount, 5)) + ` ${voteCount}` : '–'}</div>
+    `;
+    if (!iVotedAlready && !isMe) {
+      btn.onclick = () => castVote(p.id);
+    }
+    grid.appendChild(btn);
+  });
+
+  // Auto resolve when all players voted — host triggers result
+  if (totalVotes >= players.length && players.length > 0 && room.hostId === myId) {
+    setTimeout(() => resolveVotes(room), 800);
+  }
+}
+
+async function castVote(targetId) {
+  if (myVote) return;
+  myVote = targetId;
+  await storage.update(`rooms/${currentRoom.code}/votes`, { [myId]: targetId });
+}
+
+async function resolveVotes(room) {
+  const votes = room.votes || {};
+  const players = Object.values(room.players || {});
+
+  // Tally votes
+  const tally = {};
+  Object.values(votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
+  const maxV = Math.max(...Object.values(tally));
+  const topIds = Object.keys(tally).filter(id => tally[id] === maxV);
+  // Tie-break: random among top
+  const eliminatedId = topIds[Math.floor(Math.random() * topIds.length)];
+
+  await storage.update(`rooms/${room.code}`, {
+    phase: 'results',
+    eliminated: eliminatedId,
+    finalTally: tally,
+  });
+}
+
+// ─── RESULTS RENDER ───────────────────────────────────────────────────────────
+function renderResults(room) {
+  myVote = null;
+
+  const eliminatedId = room.eliminated;
+  const impostorIds = room.impostorIds || [];
+  const wasImpostor = impostorIds.includes(eliminatedId);
+  const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
+  const votes = room.votes || {};
+  const finalTally = room.finalTally || {};
+
+  const amImpostor = impostorIds.includes(myId);
+  const myVoteTarget = votes[myId];
+  const iVotedCorrectly = myVoteTarget && impostorIds.includes(myVoteTarget);
+
+  // ── Personal outcome ──────────────────────────────────────────────────────
+  let emoji, title, sub, bannerBg, bannerBorder;
+
+  if (amImpostor) {
+    if (!wasImpostor) {
+      // impostor escaped
+      emoji = '😈'; title = 'YOU ESCAPED!';
+      sub = 'You fooled everyone and survived!\nYou are the master deceiver.';
+      bannerBg = 'linear-gradient(160deg,rgba(239,68,68,0.25),rgba(139,0,0,0.15))';
+      bannerBorder = 'rgba(239,68,68,0.4)';
+    } else {
+      // impostor caught
+      emoji = '😅'; title = 'YOU GOT CAUGHT!';
+      sub = 'They figured you out.\nBetter luck next round, impostor!';
+      bannerBg = 'linear-gradient(160deg,rgba(239,68,68,0.15),rgba(0,0,0,0.1))';
+      bannerBorder = 'rgba(239,68,68,0.3)';
+    }
+  } else {
+    if (wasImpostor && iVotedCorrectly) {
+      // citizen voted correctly, impostor caught
+      emoji = '🎉'; title = 'GREAT DETECTIVE!';
+      sub = 'You found the impostor!\nYour vote made the difference. 🔍';
+      bannerBg = 'linear-gradient(160deg,rgba(34,197,94,0.25),rgba(16,163,74,0.15))';
+      bannerBorder = 'rgba(34,197,94,0.5)';
+    } else if (wasImpostor && !iVotedCorrectly) {
+      // impostor caught but this person voted wrong
+      emoji = '😬'; title = 'LUCKY WIN!';
+      sub = 'The impostor was caught — but you voted wrong!\nPay closer attention next time.';
+      bannerBg = 'linear-gradient(160deg,rgba(245,158,11,0.2),rgba(180,100,0,0.1))';
+      bannerBorder = 'rgba(245,158,11,0.4)';
+    } else {
+      // impostor won
+      emoji = '💀'; title = 'IMPOSTOR WINS!';
+      sub = 'You got tricked.\nThe impostor slipped right past you!';
+      bannerBg = 'linear-gradient(160deg,rgba(239,68,68,0.15),rgba(0,0,0,0.2))';
+      bannerBorder = 'rgba(239,68,68,0.3)';
+    }
+  }
+
+  const banner = document.getElementById('personalOutcomeBanner');
+  banner.style.background = bannerBg;
+  banner.style.borderBottom = `1px solid ${bannerBorder}`;
+  document.getElementById('resultHeroEmoji').textContent = emoji;
+  document.getElementById('resultHeroTitle').textContent = title;
+  document.getElementById('resultHeroTitle').style.color = (wasImpostor && iVotedCorrectly && !amImpostor) ? 'var(--green)' : (amImpostor && !wasImpostor) ? 'var(--red)' : 'var(--yellow)';
+  document.getElementById('resultHeroSub').textContent = sub;
+
+  // ── Correct voters card ───────────────────────────────────────────────────
+  const correctVoters = players.filter(p => votes[p.id] && impostorIds.includes(votes[p.id]));
+  const correctCard = document.getElementById('correctVotersCard');
+  const correctList = document.getElementById('correctVotersList');
+  correctList.innerHTML = '';
+
+  if (wasImpostor && correctVoters.length > 0) {
+    correctCard.style.display = 'block';
+    correctCard.style.background = 'rgba(34,197,94,0.08)';
+    correctCard.style.border = '1px solid rgba(34,197,94,0.25)';
+    correctVoters.forEach((p, idx) => {
+      const isMe = p.id === myId;
+      const div = document.createElement('div');
+      div.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:${isMe?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.04)'};border:1px solid ${isMe?'rgba(34,197,94,0.4)':'rgba(255,255,255,0.08)'};`;
+      const pi = players.indexOf(p);
+      div.innerHTML = `
+        <div style="width:36px;height:36px;border-radius:50%;background:${getColor(pi)};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;flex-shrink:0;">${p.name[0]}</div>
+        <div>
+          <div style="font-weight:800;font-size:14px;color:#fff;">${p.name}${isMe?' <span style="color:var(--green);font-size:12px;">(You)</span>':''}</div>
+          <div style="font-size:11px;color:var(--green);margin-top:2px;">✅ Voted correctly</div>
+        </div>
+        ${isMe?'<span style="margin-left:auto;font-size:24px;">🏆</span>':'<span style="margin-left:auto;font-size:20px;">🎯</span>'}
+      `;
+      correctList.appendChild(div);
+    });
+  }
+
+  // ── Words reveal ──────────────────────────────────────────────────────────
+  document.getElementById('revealCitizenWord').textContent = room.citizenWord;
+  document.getElementById('revealImpostorWord').textContent = room.impostorWord;
+
+  // ── All players with roles & who they voted for ───────────────────────────
+  const allReveal = document.getElementById('allPlayersReveal');
+  allReveal.innerHTML = '';
+  players.forEach((p, i) => {
+    const isImp = impostorIds.includes(p.id);
+    const isElim = p.id === eliminatedId;
+    const votedFor = votes[p.id];
+    const votedForPlayer = players.find(pl => pl.id === votedFor);
+    const votedCorrectly = votedFor && impostorIds.includes(votedFor);
+    const isMe = p.id === myId;
+
+    const div = document.createElement('div');
+    div.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:${isMe?'rgba(168,85,247,0.08)':'rgba(255,255,255,0.04)'};border:1px solid ${isElim?'rgba(239,68,68,0.3)':isMe?'rgba(168,85,247,0.3)':'rgba(255,255,255,0.07)'};`;
+    div.innerHTML = `
+      <div style="width:34px;height:34px;border-radius:50%;background:${getColor(i)};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0;">${p.name[0]}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:6px;">
+          ${p.name}${isMe?' <span style="color:var(--muted);font-size:11px;">(You)</span>':''}
+          ${isImp?'<span style="background:rgba(239,68,68,0.2);color:var(--red);font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:0.5px;">IMPOSTOR</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+          Voted: <span style="color:${votedCorrectly?'var(--green)':'rgba(255,255,255,0.5)'};">${votedForPlayer?votedForPlayer.name:'—'}${votedCorrectly?' ✅':''}</span>
+        </div>
+      </div>
+      <span style="font-size:18px;flex-shrink:0;">${isElim?'💀':isImp?'🕵️':'👤'}</span>
+    `;
+    allReveal.appendChild(div);
+  });
+
+  // ── Confetti for correct voters & impostor escape ─────────────────────────
+  if ((wasImpostor && iVotedCorrectly && !amImpostor) || (amImpostor && !wasImpostor)) {
+    spawnConfetti();
+  }
+
+  // ── Play again button ─────────────────────────────────────────────────────
+  if (room.hostId !== myId) {
+    document.getElementById('playAgainBtn').textContent = '⏳ Waiting for host...';
+    document.getElementById('playAgainBtn').disabled = true;
+  } else {
+    document.getElementById('playAgainBtn').disabled = false;
+    document.getElementById('playAgainBtn').textContent = '🔄 Play Again';
+  }
+}
+
+function spawnConfetti() {
+  const container = document.getElementById('confettiContainer');
+  container.innerHTML = '';
+  const colors = ['#a855f7','#3b82f6','#22c55e','#f59e0b','#ec4899','#ef4444','#fff'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    const size = 8 + Math.random() * 8;
+    el.style.cssText = `
+      position:absolute;width:${size}px;height:${size}px;border-radius:${Math.random()>0.5?'50%':'3px'};
+      background:${rand(colors)};left:${Math.random()*100}%;top:-20px;
+      animation:confettiFall ${2+Math.random()*3}s linear ${Math.random()*2}s forwards;
+    `;
+    container.appendChild(el);
+  }
+}
+
+async function playAgain() {
+  if (!currentRoom || currentRoom.hostId !== myId) return;
+  const players = Object.values(currentRoom.players||{});
+  const reset = {};
+  players.forEach(p => { reset[p.id] = {...p, ready:false, vote:null}; });
+  await storage.update(`rooms/${currentRoom.code}`, {
+    phase: 'lobby', citizenWord:'', impostorWord:'',
+    impostorIds:[], votes:{}, eliminated:null, players:reset, kicked:{},
+  });
+  myVote = null;
+}
+
+async function leaveRoom() {
+  if (currentRoom) {
+    await storage.remove(`rooms/${currentRoom.code}/players/${myId}`);
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    currentRoom = null;
+  }
+  goHome();
+}
+
+function goHome() {
+  myVote = null;
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  currentRoom = null; isHost = false;
+  goTo('home');
+}
+
+// ─── BACKGROUND CANVAS ────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, frame;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // ── Gradient mesh blobs ───────────────────────────────────────────────────
+  const blobs = [
+    { x: 0.15, y: 0.2,  r: 0.45, color: '#a855f7', speed: 0.00018, phase: 0 },
+    { x: 0.85, y: 0.75, r: 0.38, color: '#3b82f6', speed: 0.00022, phase: 2.1 },
+    { x: 0.5,  y: 0.5,  r: 0.30, color: '#ec4899', speed: 0.00015, phase: 4.3 },
+    { x: 0.2,  y: 0.8,  r: 0.25, color: '#06b6d4', speed: 0.00020, phase: 1.5 },
+    { x: 0.8,  y: 0.2,  r: 0.28, color: '#8b5cf6', speed: 0.00017, phase: 3.7 },
+  ];
+
+  // ── Floating particles ────────────────────────────────────────────────────
+  const particles = Array.from({ length: 55 }, () => ({
+    x: Math.random() * 1,
+    y: Math.random() * 1,
+    vx: (Math.random() - 0.5) * 0.0003,
+    vy: (Math.random() - 0.5) * 0.0003,
+    r: Math.random() * 1.5 + 0.4,
+    alpha: Math.random() * 0.5 + 0.15,
+    color: ['#a855f7','#3b82f6','#ec4899','#22c55e','#f59e0b','#fff'][Math.floor(Math.random()*6)],
+    pulse: Math.random() * Math.PI * 2,
+    pulseSpeed: 0.005 + Math.random() * 0.01,
+  }));
+
+  // ── Spy silhouettes drifting across ──────────────────────────────────────
+  const SPIES = ['🕵️','👤','🎭','👁️','🔍'];
+  const floaters = Array.from({ length: 8 }, (_, i) => ({
+    x: Math.random(),
+    y: Math.random(),
+    size: 18 + Math.random() * 24,
+    vx: (0.00008 + Math.random() * 0.00012) * (Math.random() > 0.5 ? 1 : -1),
+    vy: (0.00004 + Math.random() * 0.00008) * (Math.random() > 0.5 ? 1 : -1),
+    emoji: SPIES[i % SPIES.length],
+    alpha: 0.06 + Math.random() * 0.08,
+    rotation: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.002,
+  }));
+
+  // ── Grid lines ────────────────────────────────────────────────────────────
+  let gridOffset = 0;
+
+  // ── Connection lines between close particles ──────────────────────────────
+  const MAX_DIST = 0.18;
+
+  let t = 0;
+
+  function draw() {
+    t++;
+    ctx.clearRect(0, 0, W, H);
+
+    // Deep base gradient
+    const base = ctx.createLinearGradient(0, 0, W, H);
+    base.addColorStop(0,   '#05060e');
+    base.addColorStop(0.5, '#080918');
+    base.addColorStop(1,   '#060810');
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, W, H);
+
+    // ── Animated mesh blobs ───────────────────────────────────────────────
+    blobs.forEach(b => {
+      const bx = (b.x + Math.sin(t * b.speed + b.phase) * 0.12) * W;
+      const by = (b.y + Math.cos(t * b.speed * 0.7 + b.phase) * 0.1) * H;
+      const br = b.r * Math.min(W, H);
+      const grad = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+      grad.addColorStop(0,   hexAlpha(b.color, 0.18));
+      grad.addColorStop(0.5, hexAlpha(b.color, 0.07));
+      grad.addColorStop(1,   'transparent');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // ── Moving grid ───────────────────────────────────────────────────────
+    gridOffset = (gridOffset + 0.15) % 60;
+    ctx.strokeStyle = 'rgba(168,85,247,0.04)';
+    ctx.lineWidth = 0.5;
+    for (let x = -60 + (gridOffset % 60); x < W + 60; x += 60) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = -60 + (gridOffset % 60); y < H + 60; y += 60) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // ── Particles + connections ───────────────────────────────────────────
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.pulse += p.pulseSpeed;
+      if (p.x < 0) p.x = 1; if (p.x > 1) p.x = 0;
+      if (p.y < 0) p.y = 1; if (p.y > 1) p.y = 0;
+
+      const px = p.x * W, py = p.y * H;
+      const pulsedAlpha = p.alpha * (0.7 + 0.3 * Math.sin(p.pulse));
+      const pulsedR = p.r * (1 + 0.3 * Math.sin(p.pulse * 0.7));
+
+      // Glow
+      const glow = ctx.createRadialGradient(px, py, 0, px, py, pulsedR * 5);
+      glow.addColorStop(0, hexAlpha(p.color, pulsedAlpha * 0.8));
+      glow.addColorStop(1, 'transparent');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(px, py, pulsedR * 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core dot
+      ctx.beginPath();
+      ctx.arc(px, py, pulsedR, 0, Math.PI * 2);
+      ctx.fillStyle = hexAlpha(p.color, pulsedAlpha);
+      ctx.fill();
+    });
+
+    // Connection lines
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MAX_DIST) {
+          const alpha = (1 - dist / MAX_DIST) * 0.12;
+          ctx.strokeStyle = `rgba(168,85,247,${alpha})`;
+          ctx.lineWidth = 0.6;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x * W, particles[i].y * H);
+          ctx.lineTo(particles[j].x * W, particles[j].y * H);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // ── Floating emoji silhouettes ────────────────────────────────────────
+    floaters.forEach(f => {
+      f.x += f.vx; f.y += f.vy;
+      f.rotation += f.rotSpeed;
+      if (f.x < -0.1) f.x = 1.1;
+      if (f.x > 1.1)  f.x = -0.1;
+      if (f.y < -0.1) f.y = 1.1;
+      if (f.y > 1.1)  f.y = -0.1;
+
+      ctx.save();
+      ctx.globalAlpha = f.alpha;
+      ctx.translate(f.x * W, f.y * H);
+      ctx.rotate(f.rotation);
+      ctx.font = `${f.size}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(f.emoji, 0, 0);
+      ctx.restore();
+    });
+
+    // ── Vignette ──────────────────────────────────────────────────────────
+    const vig = ctx.createRadialGradient(W/2, H/2, H*0.2, W/2, H/2, H*0.85);
+    vig.addColorStop(0, 'transparent');
+    vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+
+    frame = requestAnimationFrame(draw);
+  }
+
+  function hexAlpha(hex, alpha) {
+    const h = hex.replace('#','');
+    const r = parseInt(h.substring(0,2), 16);
+    const g = parseInt(h.substring(2,4), 16);
+    const b = parseInt(h.substring(4,6), 16);
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return `rgba(168,85,247,${clamp(alpha)})`;
+    return `rgba(${r},${g},${b},${clamp(alpha)})`;
+  }
+
+  function clamp(v) {
+    const n = Number(v);
+    if (isNaN(n)) return 0;
+    return Math.min(1, Math.max(0, n));
+  }
+
+  draw();
+})();
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderCategoryChips();
+updateCategoryInfo();
+</script>
+
+<!-- Footer -->
+<div style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:10px 16px;font-family:'Nunito',sans-serif;font-size:12px;color:rgba(255,255,255,0.2);letter-spacing:0.5px;z-index:10;pointer-events:none;">
+  Developed by <span style="color:rgba(168,85,247,0.6);font-weight:700;">Prasid R Shetty</span>
+</div>
+
+</body>
+</html>
