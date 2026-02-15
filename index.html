@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +10,30 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+// ── Auto Firebase init ──────────────────────────────────────────────────────
+(function() {
+  try {
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3VfquYUOXpYNwONDrJeD0eoNrwKpR8rw",
+      authDomain: "imposter-game-a8ef3.firebaseapp.com",
+      databaseURL: "https://imposter-game-a8ef3-default-rtdb.firebaseio.com",
+      projectId: "imposter-game-a8ef3",
+      storageBucket: "imposter-game-a8ef3.firebasestorage.app",
+      messagingSenderId: "866014157331",
+      appId: "1:866014157331:web:27d84c398cd4568bd03de6",
+      measurementId: "G-SG9LG3SDTZ"
+    };
+    firebase.initializeApp(firebaseConfig);
+    window._fbDB = firebase.database();
+    window._fbReady = true;
+    console.log('✅ Firebase auto-connected!');
+  } catch(e) {
+    window._fbReady = false;
+    console.warn('Firebase init failed:', e.message);
+  }
+})();
+</script>
 
 <style>
   :root {
@@ -25,16 +50,18 @@
     --muted: rgba(255,255,255,0.4);
   }
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html, body { height:100%; overflow:hidden; }
+  html { height:100%; overflow-x:hidden; }
+  body { min-height:100%; overflow-x:hidden; overflow-y:auto; }
   body {
     background: var(--bg);
     color: var(--text);
     font-family: 'Nunito', sans-serif;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     min-height: 100vh;
-    overflow-y: auto;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
   }
 
   /* Canvas BG */
@@ -46,7 +73,7 @@
   /* Screens */
   .screen {
     position:relative; z-index:1; width:100%; max-width:480px;
-    padding:24px 20px; min-height:100vh;
+    padding:24px 20px 80px; min-height:100vh;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
   }
   .screen.hidden { display:none !important; }
@@ -74,7 +101,7 @@
     width:100%;
   }
   .card-label {
-    font-size:11px; text-transform:uppercase; letter-spacing:2px;
+    font-size:12px; text-transform:uppercase; letter-spacing:1.5px;
     color:var(--muted); margin-bottom:10px;
   }
 
@@ -98,6 +125,8 @@
     font-family:'Nunito',sans-serif; font-weight:800; font-size:16px;
     cursor:pointer; letter-spacing:0.5px;
     transition: all 0.2s ease; position:relative; overflow:hidden;
+    min-height:52px; /* minimum touch target */
+    -webkit-appearance:none;
   }
   .btn:active { transform: scale(0.97); }
   .btn-primary {
@@ -168,7 +197,7 @@
     font-weight:900; font-size:16px; color:#fff; flex-shrink:0;
   }
   .player-name { font-weight:700; font-size:15px; }
-  .player-badge { font-size:11px; color:var(--yellow); }
+  .player-badge { font-size:12px; color:var(--yellow); }
   .player-status { margin-left:auto; font-size:18px; }
 
   /* Word reveal */
@@ -199,11 +228,15 @@
 
   /* Vote */
   .vote-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; }
+  @media (max-width:360px) {
+    .vote-grid { grid-template-columns:1fr; }
+    .choice-grid { grid-template-columns:1fr; }
+  }
   .vote-btn {
     background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
-    border-radius:18px; padding:18px 12px; cursor:pointer;
+    border-radius:18px; padding:20px 12px; cursor:pointer;
     text-align:center; transition:all 0.2s; color:#fff;
-    font-family:'Nunito',sans-serif;
+    font-family:'Nunito',sans-serif; min-height:110px;
   }
   .vote-btn:active { transform:scale(0.95); }
   .vote-btn.selected {
@@ -212,7 +245,7 @@
   }
   .vote-btn.disabled { opacity:0.4; cursor:not-allowed; }
   .vote-btn-name { font-weight:800; font-size:15px; margin-top:8px; }
-  .vote-count { font-size:11px; color:var(--muted); margin-top:4px; }
+  .vote-count { font-size:12px; color:var(--muted); margin-top:4px; }
 
   /* Results */
   .result-hero { font-size:90px; text-align:center; animation:bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1); }
@@ -300,9 +333,39 @@
   .spin { animation:spin 1s linear infinite; }
 
   /* Scrollable area */
-  .scrollable { overflow-y:auto; max-height:35vh; }
+  .scrollable { overflow-y:auto; max-height:45vh; -webkit-overflow-scrolling:touch; }
   .scrollable::-webkit-scrollbar { width:3px; }
   .scrollable::-webkit-scrollbar-thumb { background:rgba(168,85,247,0.4); border-radius:3px; }
+
+  /* ── Mobile safe area support ── */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .screen { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+    #screen-results > div:last-child { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  }
+
+  /* ── Small phone fixes (iPhone SE, Galaxy A series) ── */
+  @media (max-width:380px) {
+    .title-giant { font-size: 58px; }
+    .title-big   { font-size: 32px; }
+    .card        { padding: 20px 16px; }
+    .btn         { padding: 14px; font-size: 15px; }
+    .code-display { font-size: 44px; letter-spacing: 8px; }
+    .word-role   { font-size: 36px; }
+    .secret-word { font-size: 48px; }
+    .choice-grid { grid-template-columns: 1fr; gap: 10px; }
+    .vote-grid   { grid-template-columns: 1fr; }
+    .result-hero { font-size: 72px; }
+    #resultHeroTitle { font-size: 36px; }
+  }
+
+  /* ── Landscape phone ── */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .screen { justify-content: flex-start; padding-top: 16px; }
+    .title-giant { font-size: 48px; }
+    .word-card   { padding: 20px; }
+    #revealRoleEmoji { font-size: 48px; margin-bottom: 6px; }
+    .secret-word { font-size: 42px; }
+  }
 
   /* Firebase config modal */
   .modal-overlay {
@@ -686,7 +749,6 @@ const WORD_PAIRS = {
 };
 
 // ─── State ───────────────────────────────────────────────────────────────────
-let db = null;
 let roomRef = null;
 let myId = null;
 let myName = "";
@@ -696,7 +758,8 @@ let selectedCategories = ["Vehicles","Food","Animals"];
 let myVote = null;
 
 // ─── Firebase ────────────────────────────────────────────────────────────────
-let firebaseConnected = false;
+let firebaseConnected = window._fbReady || false;
+let db = window._fbDB || null;
 
 // In-memory fallback DB
 const memDB = {};
@@ -1705,12 +1768,19 @@ function goHome() {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 renderCategoryChips();
 updateCategoryInfo();
+
+// Auto-show Firebase connected status
+if (firebaseConnected) {
+  document.getElementById('fbStatusDot').className = 'status-dot green';
+  document.getElementById('fbStatusText').innerHTML = '<span style="color:var(--green)">🔥 Firebase connected — Cross-phone multiplayer active!</span>';
+}
 </script>
 
 <!-- Footer -->
-<div style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:10px 16px;font-family:'Nunito',sans-serif;font-size:12px;color:rgba(255,255,255,0.2);letter-spacing:0.5px;z-index:10;pointer-events:none;">
+<div style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:8px 16px calc(8px + env(safe-area-inset-bottom));font-family:'Nunito',sans-serif;font-size:12px;color:rgba(255,255,255,0.2);letter-spacing:0.5px;z-index:10;pointer-events:none;background:linear-gradient(to top, rgba(5,6,14,0.8), transparent);">
   Developed by <span style="color:rgba(168,85,247,0.6);font-weight:700;">Prasid R Shetty</span>
 </div>
 
 </body>
 </html>
+
