@@ -408,6 +408,7 @@
   <div style="display:flex;align-items:center;gap:8px;margin:20px 0 28px;font-size:13px;color:var(--muted);">
     <span class="status-dot" id="fbStatusDot" style="background:var(--yellow);"></span>
     <span id="fbStatusText">Not connected — <span style="color:var(--blue);cursor:pointer;text-decoration:underline;" onclick="openFirebaseModal()">Setup Firebase for multiplayer</span></span>
+    <span id="fbResetBtn" style="display:none;margin-left:auto;font-size:11px;color:rgba(255,255,255,0.25);cursor:pointer;text-decoration:underline;" onclick="resetFirebase()">Reset</span>
   </div>
 
   <div class="choice-grid">
@@ -963,6 +964,23 @@ function getColor(i) { return AVATAR_COLORS[i % AVATAR_COLORS.length]; }
 function openFirebaseModal() { document.getElementById('firebaseModal').classList.remove('hidden'); }
 function closeFirebaseModal() { document.getElementById('firebaseModal').classList.add('hidden'); }
 
+function resetFirebase() {
+  localStorage.removeItem('impostor_firebase_config');
+  firebaseConnected = false;
+  db = null;
+  document.getElementById('fbStatusDot').className = 'status-dot';
+  document.getElementById('fbStatusDot').style.background = 'var(--yellow)';
+  document.getElementById('fbStatusText').innerHTML = 'Not connected — <span style="color:var(--blue);cursor:pointer;text-decoration:underline;" onclick="openFirebaseModal()">Setup Firebase for multiplayer</span>';
+  document.getElementById('fbResetBtn').style.display = 'none';
+  showToast('Firebase config cleared', 'info');
+}
+
+function showConnectedStatus() {
+  document.getElementById('fbStatusDot').className = 'status-dot green';
+  document.getElementById('fbStatusText').innerHTML = '<span style="color:var(--green)">🔥 Firebase connected — Cross-phone multiplayer active!</span>';
+  document.getElementById('fbResetBtn').style.display = 'inline';
+}
+
 function applyFirebaseConfig() {
   const raw = document.getElementById('firebaseConfigInput').value.trim();
   try {
@@ -976,10 +994,12 @@ function applyFirebaseConfig() {
     db = firebase.database();
     firebaseConnected = true;
 
-    document.getElementById('fbStatusDot').className = 'status-dot green';
-    document.getElementById('fbStatusText').innerHTML = '<span style="color:var(--green)">🔥 Firebase connected — Cross-phone multiplayer active!</span>';
+    // ✅ Save to localStorage so it auto-connects next time
+    localStorage.setItem('impostor_firebase_config', JSON.stringify(config));
+
+    showConnectedStatus();
     closeFirebaseModal();
-    showToast('Firebase connected! Real multiplayer enabled 🎉', 'success');
+    showToast('Firebase connected! Auto-saves for next time 🎉', 'success');
   } catch(e) {
     showToast('Invalid config: ' + e.message, 'error');
   }
@@ -1866,7 +1886,9 @@ updateCategoryInfo();
 // ── Firebase auto-init (runs after SDKs are loaded) ──────────────────────────
 (function initFirebase() {
   try {
-    const firebaseConfig = {
+    // First check localStorage for saved config
+    const saved = localStorage.getItem('impostor_firebase_config');
+    const firebaseConfig = saved ? JSON.parse(saved) : {
       apiKey: "",
       authDomain: "",
       databaseURL: "",
@@ -1876,18 +1898,19 @@ updateCategoryInfo();
       appId: "",
       measurementId: ""
     };
+
     if (!firebaseConfig.apiKey) {
-      console.warn('⚠️ No Firebase config set. Use Setup Firebase button on home screen.');
+      console.warn('⚠️ No Firebase config found. Use Setup Firebase on home screen.');
       return;
     }
+
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
     db = firebase.database();
     firebaseConnected = true;
-    document.getElementById('fbStatusDot').className = 'status-dot green';
-    document.getElementById('fbStatusText').innerHTML = '<span style="color:var(--green)">🔥 Firebase connected — Cross-phone multiplayer active!</span>';
-    console.log('✅ Firebase connected!');
+    showConnectedStatus();
+    console.log('✅ Firebase auto-connected from saved config!');
   } catch(e) {
     firebaseConnected = false;
     console.warn('⚠️ Firebase init failed:', e.message);
