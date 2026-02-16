@@ -305,6 +305,85 @@
   @keyframes shimmer { 0%{filter:brightness(3)} 100%{filter:brightness(1)} }
   @keyframes confettiFall { to{transform:translateY(110vh) rotate(720deg);opacity:0} }
   @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* ── Card flip animation ── */
+  .card-flip-scene { width:100%; perspective:1000px; }
+  .card-flip-inner {
+    position:relative; width:100%; transform-style:preserve-3d;
+    transition:transform 0.7s cubic-bezier(0.4,0.2,0.2,1);
+  }
+  .card-flip-inner.flipped { transform:rotateY(180deg); }
+  .card-flip-front, .card-flip-back {
+    position:absolute; width:100%; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    border-radius:24px;
+  }
+  .card-flip-front { position:relative; }
+  .card-flip-back { transform:rotateY(180deg); }
+
+  /* countdown */
+  @keyframes countPop { 0%{transform:scale(0.3);opacity:0} 60%{transform:scale(1.3)} 100%{transform:scale(1);opacity:1} }
+  .countdown-num { animation:countPop 0.4s cubic-bezier(0.34,1.56,0.64,1); font-family:'Bebas Neue',cursive; font-size:120px; line-height:1; }
+
+  /* ── Emoji reactions ── */
+  .reaction-bar {
+    display:flex; gap:8px; justify-content:center; flex-wrap:wrap;
+    width:100%; padding:12px 16px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+    border-radius:18px;
+  }
+  .reaction-btn {
+    font-size:26px; background:none; border:none; cursor:pointer;
+    padding:6px 10px; border-radius:12px; transition:all 0.15s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .reaction-btn:active { transform:scale(1.4); }
+
+  @keyframes floatUp {
+    0%   { transform:translateY(0) scale(1); opacity:1; }
+    100% { transform:translateY(-120px) scale(1.5); opacity:0; }
+  }
+  .floating-reaction {
+    position:fixed; font-size:36px; pointer-events:none; z-index:999;
+    animation:floatUp 1.4s ease-out forwards;
+  }
+
+  /* ── Anonymous accusation ── */
+  .accusation-feed {
+    width:100%; max-height:140px; overflow-y:auto;
+    display:flex; flex-direction:column; gap:6px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .accusation-msg {
+    background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2);
+    border-radius:12px; padding:8px 14px; font-size:13px; color:rgba(255,255,255,0.8);
+    animation:slideUp 0.3s ease;
+  }
+
+  /* ── Avatar picker ── */
+  .avatar-grid {
+    display:grid; grid-template-columns:repeat(6,1fr); gap:8px; width:100%;
+  }
+  .avatar-opt {
+    font-size:28px; background:rgba(255,255,255,0.05); border:2px solid transparent;
+    border-radius:14px; padding:8px 4px; cursor:pointer; text-align:center;
+    transition:all 0.15s; -webkit-tap-highlight-color:transparent;
+  }
+  .avatar-opt.selected {
+    border-color:var(--purple); background:rgba(168,85,247,0.2);
+    transform:scale(1.1);
+  }
+  .avatar-opt:active { transform:scale(0.9); }
+
+  /* ── Sound toggle ── */
+  .sound-toggle {
+    position:fixed; top:16px; right:16px; z-index:100;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+    border-radius:50%; width:40px; height:40px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:18px; transition:all 0.2s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .sound-toggle:active { transform:scale(0.9); }
   .spin { animation:spin 1s linear infinite; }
 
   /* Scrollable area */
@@ -367,6 +446,7 @@
 <body>
 
 <canvas id="bgCanvas"></canvas>
+<div class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle Sound">🔊</div>
 
 <!-- ═══════════════════ FIREBASE SETUP MODAL ═══════════════════ -->
 <div class="modal-overlay hidden" id="firebaseModal">
@@ -572,6 +652,10 @@
       <div class="card-label">Your Name</div>
       <input type="text" id="createName" placeholder="Enter your name" maxlength="20" onkeydown="if(event.key==='Enter')createRoom()"/>
     </div>
+    <div>
+      <div class="card-label">Pick Your Avatar</div>
+      <div class="avatar-grid" id="createAvatarGrid"></div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
       <div>
         <div class="card-label">Impostors</div>
@@ -626,6 +710,10 @@
     <div>
       <div class="card-label">Your Name</div>
       <input type="text" id="joinName" placeholder="Enter your name" maxlength="20"/>
+    </div>
+    <div>
+      <div class="card-label">Pick Your Avatar</div>
+      <div class="avatar-grid" id="joinAvatarGrid"></div>
     </div>
     <div>
       <div class="card-label">Room Code</div>
@@ -690,16 +778,37 @@
     <div id="revealPlayerStrip" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
   </div>
 
-  <div id="wordRevealCard" class="word-card citizen shimmer-reveal w-full">
-    <div id="revealRoleEmoji" style="font-size:72px;margin-bottom:12px;">👤</div>
-    <div class="word-role citizen" id="revealRoleName">CITIZEN</div>
-    <div style="width:60px;height:2px;background:rgba(255,255,255,0.15);margin:16px auto;"></div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Your word is:</div>
-    <div class="secret-word" id="revealWord">CAR</div>
-    <div class="word-hint" id="revealHint">Describe it without saying the word!</div>
+  <!-- Countdown overlay -->
+  <div id="countdownOverlay" style="width:100%;text-align:center;padding:20px 0;display:none;">
+    <div style="font-size:14px;color:var(--muted);margin-bottom:8px;letter-spacing:2px;text-transform:uppercase;">Revealing in...</div>
+    <div class="countdown-num" id="countdownNum" style="color:var(--purple);">3</div>
   </div>
 
-  <button class="btn btn-primary w-full" onclick="playerReady()">
+  <!-- Card flip scene -->
+  <div class="card-flip-scene" id="cardFlipScene" style="display:none;">
+    <div class="card-flip-inner" id="cardFlipInner">
+      <!-- Front = hidden back -->
+      <div class="card-flip-front">
+        <div class="word-card citizen w-full" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;">
+          <div style="font-size:64px;margin-bottom:12px;">🃏</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:28px;letter-spacing:3px;color:rgba(255,255,255,0.3);">TAP TO REVEAL</div>
+        </div>
+      </div>
+      <!-- Back = actual role -->
+      <div class="card-flip-back">
+        <div id="wordRevealCard" class="word-card citizen w-full">
+          <div id="revealRoleEmoji" style="font-size:72px;margin-bottom:12px;">👤</div>
+          <div class="word-role citizen" id="revealRoleName">CITIZEN</div>
+          <div style="width:60px;height:2px;background:rgba(255,255,255,0.15);margin:16px auto;"></div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Your word is:</div>
+          <div class="secret-word" id="revealWord">CAR</div>
+          <div class="word-hint" id="revealHint">Describe it without saying the word!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary w-full" onclick="playerReady()" id="readyBtn" style="display:none;">
     ✅ I've Seen My Word — I'm Ready
   </button>
 
@@ -722,13 +831,34 @@
   <!-- Role reminder badge -->
   <div id="myRoleBadge" style="width:100%;padding:10px 16px;border-radius:14px;text-align:center;font-size:13px;font-weight:700;"></div>
 
-  <!-- Instructions -->
-  <div class="card" style="padding:16px 20px;">
-    <div style="font-size:13px;color:var(--muted);line-height:1.6;">
-      🗣️ Take turns giving one clue about your word.<br>
-      🚫 Don't say the exact word!<br>
-      🕵️ Find who gave the most suspicious clue.
+  <!-- Emoji reactions -->
+  <div style="width:100%;">
+    <div class="card-label" style="margin-bottom:8px;">React Live 🎭</div>
+    <div class="reaction-bar" id="reactionBar">
+      <button class="reaction-btn" onclick="sendReaction('😂')">😂</button>
+      <button class="reaction-btn" onclick="sendReaction('🤔')">🤔</button>
+      <button class="reaction-btn" onclick="sendReaction('👀')">👀</button>
+      <button class="reaction-btn" onclick="sendReaction('😱')">😱</button>
+      <button class="reaction-btn" onclick="sendReaction('🤥')">🤥</button>
+      <button class="reaction-btn" onclick="sendReaction('👆')">👆</button>
+      <button class="reaction-btn" onclick="sendReaction('🔥')">🔥</button>
+      <button class="reaction-btn" onclick="sendReaction('💀')">💀</button>
     </div>
+    <!-- Floating reactions container -->
+    <div id="reactionFeed" style="position:relative;height:0;overflow:visible;"></div>
+  </div>
+
+  <!-- Anonymous accusation -->
+  <div style="width:100%;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:18px;padding:16px;">
+    <div class="card-label" style="color:var(--red);margin-bottom:10px;">🕵️ Anonymous Accusation</div>
+    <div class="accusation-feed" id="accusationFeed"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;" id="accusationInputArea">
+      <input type="text" id="accusationInput" placeholder="Send anonymous message..." maxlength="60"
+        style="flex:1;font-size:14px;padding:10px 14px;"
+        onkeydown="if(event.key==='Enter')sendAccusation()"/>
+      <button onclick="sendAccusation()" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:10px 16px;color:var(--red);cursor:pointer;font-weight:700;font-family:'Nunito',sans-serif;white-space:nowrap;font-size:13px;">Send 📨</button>
+    </div>
+    <div id="accusationUsed" class="hidden" style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px;">You've used your anonymous message</div>
   </div>
 
   <!-- Player order -->
@@ -847,10 +977,15 @@ const WORD_PAIRS = {
 let roomRef = null;
 let myId = null;
 let myName = "";
+let myAvatar = "🎭";
 let isHost = false;
 let currentRoom = null;
 let selectedCategories = ["Vehicles","Food","Animals"];
 let myVote = null;
+let soundEnabled = true;
+let accusationSent = false;
+
+const AVATARS = ["🎭","🕵️","👻","🤖","🦊","🐺","🦁","🐯","🎃","👽","🤡","🦸","🧙","🥷","🤠","😈","👾","🦝","🐸","🦄","🐉","💀"];
 
 // ─── Firebase ────────────────────────────────────────────────────────────────
 let firebaseConnected = false;
@@ -1064,7 +1199,7 @@ async function createRoom() {
     maxPlayers: maxPlayersValue,
     categories: selectedCategories,
     round: 0,
-    players: { [myId]: { name, id: myId, ready: false, vote: null, joinedAt: Date.now() } },
+    players: { [myId]: { name, id: myId, avatar: myAvatar, ready: false, vote: null, joinedAt: Date.now() } },
     citizenWord: '', impostorWord: '', impostorIds: [],
   };
 
@@ -1093,7 +1228,7 @@ async function joinRoom() {
   isHost = false;
 
   await storage.update(`rooms/${code}/players`, {
-    [myId]: { name, id: myId, ready: false, vote: null, joinedAt: Date.now() }
+    [myId]: { name, id: myId, avatar: myAvatar, ready: false, vote: null, joinedAt: Date.now() }
   });
 
   listenToRoom(code);
@@ -1129,19 +1264,30 @@ function handleRoomUpdate(room) {
     if (currentScreen !== 'screen-lobby') goTo('lobby');
   }
   else if (phase === 'reveal') {
-    renderReveal(room);
-    if (currentScreen !== 'screen-reveal') goTo('reveal');
+    if (currentScreen !== 'screen-reveal') {
+      revealDone = false;
+      renderReveal(room); goTo('reveal');
+    } else renderReveal(room);
   }
   else if (phase === 'discussion') {
-    if (currentScreen !== 'screen-discussion') { renderDiscussion(room); goTo('discussion'); }
-    else renderDiscussion(room);
+    if (currentScreen !== 'screen-discussion') {
+      accusationSent = false;
+      document.getElementById('accusationInputArea').classList.remove('hidden');
+      document.getElementById('accusationUsed').classList.add('hidden');
+      document.getElementById('accusationFeed').innerHTML = '';
+      renderDiscussion(room); goTo('discussion');
+      listenReactions(room.code);
+      listenAccusations(room.code);
+    } else renderDiscussion(room);
   }
   else if (phase === 'voting') {
     myVote = null;
     const confirmed = document.getElementById('myVoteConfirmed');
     if (confirmed) confirmed.classList.add('hidden');
-    if (currentScreen !== 'screen-vote') { renderVoting(room); goTo('vote'); }
-    else renderVoting(room);
+    if (currentScreen !== 'screen-vote') {
+      playSound('suspense');
+      renderVoting(room); goTo('vote');
+    } else renderVoting(room);
   }
   else if (phase === 'results') {
     if (currentScreen !== 'screen-results') { renderResults(room); goTo('results'); }
@@ -1165,9 +1311,11 @@ function renderLobby(room) {
     const isMe = p.id === myId;
     const isPlayerHost = p.id === room.hostId;
     const iAmHost = room.hostId === myId;
+    const avatarDisplay = p.avatar || p.name[0].toUpperCase();
+    const isEmoji = p.avatar && p.avatar.length > 0;
 
     div.innerHTML = `
-      <div class="player-avatar" style="background:${getColor(i)}">${p.name[0].toUpperCase()}</div>
+      <div class="player-avatar" style="background:${isEmoji ? 'rgba(255,255,255,0.08)' : getColor(i)};font-size:${isEmoji ? '22px' : '14px'};">${avatarDisplay}</div>
       <div style="flex:1;">
         <div class="player-name">${p.name}${isMe ? ' <span style="color:var(--muted);font-size:12px;">(You)</span>' : ''}</div>
         ${isPlayerHost ? '<div class="player-badge">👑 Host</div>' : ''}
@@ -1322,6 +1470,9 @@ function renderPlayerStrip(containerId, players, votes, mode) {
       statusColor = hasVoted ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)';
     }
 
+    const avatarDisplay = p.avatar || p.name[0].toUpperCase();
+    const isEmoji = p.avatar && p.avatar.length > 0;
+
     const chip = document.createElement('div');
     chip.style.cssText = `
       display:flex;align-items:center;gap:6px;
@@ -1331,7 +1482,7 @@ function renderPlayerStrip(containerId, players, votes, mode) {
       transition:background 0.3s;
     `;
     chip.innerHTML = `
-      <div style="width:24px;height:24px;border-radius:50%;background:${getColor(i)};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:#fff;flex-shrink:0;">${p.name[0].toUpperCase()}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:${isEmoji ? 'rgba(255,255,255,0.08)' : getColor(i)};display:flex;align-items:center;justify-content:center;font-size:${isEmoji ? '18px' : '11px'};font-weight:900;color:#fff;flex-shrink:0;">${avatarDisplay}</div>
       <span style="font-size:13px;font-weight:700;color:${p.id === myId ? 'rgba(168,85,247,0.9)' : '#fff'};">${p.name}${p.id === myId ? ' (You)' : ''}</span>
       ${statusEmoji ? `<span style="font-size:13px;margin-left:2px;">${statusEmoji}</span>` : ''}
     `;
@@ -1340,37 +1491,43 @@ function renderPlayerStrip(containerId, players, votes, mode) {
 }
 
 // ─── REVEAL RENDER ────────────────────────────────────────────────────────────
+let revealDone = false;
 function renderReveal(room) {
   const amImpostor = (room.impostorIds || []).includes(myId);
   const myWord = amImpostor ? room.impostorWord : room.citizenWord;
 
   document.getElementById('revealRound').textContent = room.round || 1;
   const card = document.getElementById('wordRevealCard');
-  card.className = 'word-card w-full shimmer-reveal ' + (amImpostor ? 'impostor' : 'citizen');
-  document.getElementById('revealRoleEmoji').textContent = amImpostor ? '🕵️' : '👤';
+  card.className = 'word-card w-full ' + (amImpostor ? 'impostor' : 'citizen');
+  document.getElementById('revealRoleEmoji').textContent = amImpostor ? '🕵️' : (myAvatar || '👤');
   document.getElementById('revealRoleName').textContent = amImpostor ? 'IMPOSTOR' : 'CITIZEN';
   document.getElementById('revealRoleName').className = 'word-role ' + (amImpostor ? 'impostor' : 'citizen');
   document.getElementById('revealWord').textContent = amImpostor ? '???' : myWord;
   document.getElementById('revealWord').style.color = amImpostor ? '#ef4444' : '';
   document.getElementById('revealHint').textContent = amImpostor
-    ? 'You don\'t know the word. Try to blend in with others!'
+    ? 'You don\'t know the word. Try to blend in!'
     : `Describe "${myWord}" without saying it!`;
 
   const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
   const readyCount = players.filter(p => p.ready).length;
-
   renderPlayerStrip('revealPlayerStrip', players, null, 'ready');
-
   document.getElementById('readyCount').textContent = `${readyCount} / ${players.length} players ready`;
+
+  // Trigger countdown only once when screen first shown
+  if (!revealDone) {
+    revealDone = true;
+    // Reset flip
+    document.getElementById('cardFlipInner').classList.remove('flipped');
+    startRevealCountdown();
+  }
 }
 
 async function playerReady() {
   if (!currentRoom) return;
   await storage.update(`rooms/${currentRoom.code}/players/${myId}`, { ready: true });
-  document.querySelector('#screen-reveal .btn-primary').disabled = true;
-  document.querySelector('#screen-reveal .btn-primary').textContent = '✅ Waiting for others...';
-
-  // Check if all ready (host decides)
+  const btn = document.getElementById('readyBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '✅ Waiting for others...'; }
+  playSound('click');
   const room = await storage.get(`rooms/${currentRoom.code}`);
   const players = Object.values(room.players || {});
   const allReady = players.every(p => p.ready);
@@ -1488,6 +1645,7 @@ function renderVoting(room) {
 async function castVote(targetId) {
   if (myVote) return;
   myVote = targetId;
+  playSound('vote');
   await storage.update(`rooms/${currentRoom.code}/votes`, { [myId]: targetId });
 }
 
@@ -1632,9 +1790,12 @@ function renderResults(room) {
     allReveal.appendChild(div);
   });
 
-  // ── Confetti for correct voters & impostor escape ─────────────────────────
+  // ── Confetti and sounds ───────────────────────────────────────────────────
   if ((wasImpostor && iVotedCorrectly && !amImpostor) || (amImpostor && !wasImpostor)) {
     spawnConfetti();
+    setTimeout(() => playSound('win'), 300);
+  } else {
+    setTimeout(() => playSound('lose'), 300);
   }
 
   // ── Play again button ─────────────────────────────────────────────────────
@@ -1879,9 +2040,263 @@ function goHome() {
   draw();
 })();
 
+// ─── AVATAR PICKER ────────────────────────────────────────────────────────────
+function renderAvatarGrid(containerId) {
+  const grid = document.getElementById(containerId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  AVATARS.forEach(av => {
+    const btn = document.createElement('button');
+    btn.className = 'avatar-opt' + (av === myAvatar ? ' selected' : '');
+    btn.textContent = av;
+    btn.onclick = () => {
+      myAvatar = av;
+      grid.querySelectorAll('.avatar-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      // sync to other grid too
+      ['createAvatarGrid','joinAvatarGrid'].forEach(id => {
+        const g = document.getElementById(id);
+        if (g && g !== grid) {
+          g.querySelectorAll('.avatar-opt').forEach(b => {
+            b.classList.toggle('selected', b.textContent === av);
+          });
+        }
+      });
+      playSound('click');
+    };
+    grid.appendChild(btn);
+  });
+}
+
+// ─── SOUND ENGINE ─────────────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playSound(type) {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudioCtx();
+    const g = ctx.createGain();
+    g.connect(ctx.destination);
+
+    if (type === 'click') {
+      const o = ctx.createOscillator();
+      o.connect(g); g.gain.setValueAtTime(0.15, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      o.frequency.setValueAtTime(600, ctx.currentTime);
+      o.start(); o.stop(ctx.currentTime + 0.1);
+
+    } else if (type === 'vote') {
+      [440,550,660].forEach((f,i) => {
+        const o = ctx.createOscillator();
+        o.connect(g); g.gain.setValueAtTime(0.2, ctx.currentTime + i*0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.1 + 0.15);
+        o.frequency.setValueAtTime(f, ctx.currentTime + i*0.1);
+        o.start(ctx.currentTime + i*0.1);
+        o.stop(ctx.currentTime + i*0.1 + 0.15);
+      });
+
+    } else if (type === 'win') {
+      [523,659,784,1047].forEach((f,i) => {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.connect(g); g.gain.setValueAtTime(0.25, ctx.currentTime + i*0.12);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.12 + 0.3);
+        o.frequency.setValueAtTime(f, ctx.currentTime + i*0.12);
+        o.start(ctx.currentTime + i*0.12);
+        o.stop(ctx.currentTime + i*0.12 + 0.3);
+      });
+
+    } else if (type === 'lose') {
+      [400,350,280].forEach((f,i) => {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.connect(g); g.gain.setValueAtTime(0.15, ctx.currentTime + i*0.15);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.15 + 0.2);
+        o.frequency.setValueAtTime(f, ctx.currentTime + i*0.15);
+        o.start(ctx.currentTime + i*0.15);
+        o.stop(ctx.currentTime + i*0.15 + 0.2);
+      });
+
+    } else if (type === 'suspense') {
+      // Low pulsing suspense during voting
+      const o = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.frequency.value = 3;
+      lfoGain.gain.value = 20;
+      lfo.connect(lfoGain); lfoGain.connect(o.frequency);
+      o.type = 'sine'; o.frequency.value = 120;
+      o.connect(g); g.gain.setValueAtTime(0.18, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+      lfo.start(); lfo.stop(ctx.currentTime + 1.5);
+      o.start(); o.stop(ctx.currentTime + 1.5);
+
+    } else if (type === 'reveal') {
+      // Dramatic whoosh
+      const o = ctx.createOscillator();
+      o.type = 'sine'; o.connect(g);
+      g.gain.setValueAtTime(0.001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.3);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+      o.frequency.setValueAtTime(200, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.4);
+      o.start(); o.stop(ctx.currentTime + 0.8);
+
+    } else if (type === 'reaction') {
+      const o = ctx.createOscillator();
+      o.type = 'sine'; o.connect(g);
+      g.gain.setValueAtTime(0.12, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.start(); o.stop(ctx.currentTime + 0.2);
+
+    } else if (type === 'countdown') {
+      const o = ctx.createOscillator();
+      o.type = 'sine'; o.connect(g);
+      g.gain.setValueAtTime(0.2, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      o.frequency.setValueAtTime(type === 'go' ? 1200 : 440, ctx.currentTime);
+      o.start(); o.stop(ctx.currentTime + 0.15);
+    }
+  } catch(e) {}
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
+  if (soundEnabled) playSound('click');
+}
+
+// ─── CARD FLIP REVEAL ─────────────────────────────────────────────────────────
+function startRevealCountdown() {
+  const overlay = document.getElementById('countdownOverlay');
+  const scene = document.getElementById('cardFlipScene');
+  const btn = document.getElementById('readyBtn');
+  const numEl = document.getElementById('countdownNum');
+
+  overlay.style.display = 'block';
+  scene.style.display = 'none';
+  btn.style.display = 'none';
+
+  let count = 3;
+  numEl.textContent = count;
+  numEl.style.animation = 'none';
+  numEl.offsetHeight; // reflow
+  numEl.style.animation = 'countPop 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+
+  playSound('countdown');
+
+  const interval = setInterval(() => {
+    count--;
+    if (count > 0) {
+      numEl.textContent = count;
+      numEl.style.animation = 'none';
+      numEl.offsetHeight;
+      numEl.style.animation = 'countPop 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+      playSound('countdown');
+    } else {
+      clearInterval(interval);
+      overlay.style.display = 'none';
+      scene.style.display = 'block';
+      btn.style.display = 'block';
+      playSound('reveal');
+      // auto-flip after short delay
+      setTimeout(() => {
+        document.getElementById('cardFlipInner').classList.add('flipped');
+      }, 400);
+    }
+  }, 900);
+}
+
+// ─── EMOJI REACTIONS ──────────────────────────────────────────────────────────
+function sendReaction(emoji) {
+  if (!currentRoom) return;
+  playSound('reaction');
+  // Show locally immediately
+  spawnFloatingReaction(emoji);
+  // Sync to Firebase
+  if (firebaseConnected && db) {
+    const ref = db.ref(`rooms/${currentRoom.code}/reactions`);
+    ref.push({ emoji, from: myId, name: myName, t: Date.now() });
+  }
+}
+
+function spawnFloatingReaction(emoji) {
+  const el = document.createElement('div');
+  el.className = 'floating-reaction';
+  el.textContent = emoji;
+  const x = 20 + Math.random() * 60;
+  el.style.left = x + 'vw';
+  el.style.bottom = '120px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
+function listenReactions(roomCode) {
+  if (!firebaseConnected || !db) return;
+  const ref = db.ref(`rooms/${roomCode}/reactions`);
+  // Only listen to new ones
+  ref.limitToLast(1).on('child_added', snap => {
+    const data = snap.val();
+    if (data && data.from !== myId) {
+      spawnFloatingReaction(data.emoji);
+      playSound('reaction');
+    }
+  });
+}
+
+// ─── ANONYMOUS ACCUSATION ─────────────────────────────────────────────────────
+async function sendAccusation() {
+  if (accusationSent) return;
+  const input = document.getElementById('accusationInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  accusationSent = true;
+  input.value = '';
+  document.getElementById('accusationInputArea').classList.add('hidden');
+  document.getElementById('accusationUsed').classList.remove('hidden');
+
+  const accusation = { msg, t: Date.now() };
+  if (firebaseConnected && db && currentRoom) {
+    await db.ref(`rooms/${currentRoom.code}/accusations`).push(accusation);
+  } else {
+    // demo mode — show locally
+    renderAccusation(accusation);
+  }
+  playSound('click');
+}
+
+function renderAccusation(data) {
+  const feed = document.getElementById('accusationFeed');
+  if (!feed) return;
+  const div = document.createElement('div');
+  div.className = 'accusation-msg';
+  div.textContent = `🕵️ Anonymous: "${data.msg}"`;
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function listenAccusations(roomCode) {
+  if (!firebaseConnected || !db) return;
+  const ref = db.ref(`rooms/${roomCode}/accusations`);
+  ref.on('child_added', snap => {
+    const data = snap.val();
+    if (data) renderAccusation(data);
+  });
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 renderCategoryChips();
 updateCategoryInfo();
+renderAvatarGrid('createAvatarGrid');
+renderAvatarGrid('joinAvatarGrid');
 
 // ── Firebase auto-init (runs after SDKs are loaded) ──────────────────────────
 (function initFirebase() {
