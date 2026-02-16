@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,30 +9,6 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<script>
-// ── Auto Firebase init ──────────────────────────────────────────────────────
-(function() {
-  try {
-    const firebaseConfig = {
-      apiKey: "AIzaSyB3VfquYUOXpYNwONDrJeD0eoNrwKpR8rw",
-      authDomain: "imposter-game-a8ef3.firebaseapp.com",
-      databaseURL: "https://imposter-game-a8ef3-default-rtdb.firebaseio.com",
-      projectId: "imposter-game-a8ef3",
-      storageBucket: "imposter-game-a8ef3.firebasestorage.app",
-      messagingSenderId: "866014157331",
-      appId: "1:866014157331:web:27d84c398cd4568bd03de6",
-      measurementId: "G-SG9LG3SDTZ"
-    };
-    firebase.initializeApp(firebaseConfig);
-    window._fbDB = firebase.database();
-    window._fbReady = true;
-    console.log('✅ Firebase auto-connected!');
-  } catch(e) {
-    window._fbReady = false;
-    console.warn('Firebase init failed:', e.message);
-  }
-})();
-</script>
 
 <style>
   :root {
@@ -448,6 +423,12 @@
     </button>
   </div>
 
+  <button onclick="goTo('rules')" style="margin-top:16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:14px 32px;color:rgba(255,255,255,0.7);cursor:pointer;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.5px;transition:all 0.2s;width:100%;"
+    onmouseover="this.style.background='rgba(168,85,247,0.12)';this.style.borderColor='rgba(168,85,247,0.4)';this.style.color='#fff'"
+    onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='rgba(255,255,255,0.12)';this.style.color='rgba(255,255,255,0.7)'">
+    📖 How to Play
+  </button>
+
   <div style="display:flex;gap:32px;justify-content:center;margin-top:36px;">
     <div style="text-align:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:28px;color:#fff;">8+</div>
@@ -462,6 +443,119 @@
       <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Players</div>
     </div>
   </div>
+</div>
+
+<!-- ═══════════════════ SCREEN: RULES ═══════════════════ -->
+<div class="screen hidden flex-col" id="screen-rules" style="justify-content:flex-start;padding-top:40px;gap:0;">
+  <div style="width:100%;margin-bottom:24px;">
+    <button onclick="goTo('home')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-family:'Nunito',sans-serif;font-size:14px;padding:0;margin-bottom:16px;">← Back</button>
+    <div class="title-big" style="color:var(--purple);">HOW TO PLAY</div>
+    <p class="subtitle mt-4">Master the art of deception 🕵️</p>
+  </div>
+
+  <!-- What is Impostor -->
+  <div style="width:100%;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(59,130,246,0.1));border:1px solid rgba(168,85,247,0.3);border-radius:20px;padding:20px;margin-bottom:14px;">
+    <div style="font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:2px;color:#fff;margin-bottom:10px;">🎯 THE GOAL</div>
+    <p style="font-size:14px;color:rgba(255,255,255,0.75);line-height:1.7;">
+      Everyone gets a <strong style="color:#fff;">secret word</strong> on their own phone.<br>
+      Most players are <strong style="color:var(--green);">Citizens</strong> — they all get the <em>same word</em>.<br>
+      One (or more) are <strong style="color:var(--red);">Impostors</strong> — they get a <em>similar but different word</em>.<br><br>
+      Citizens must find the Impostor. The Impostor must blend in! 🎭
+    </p>
+  </div>
+
+  <!-- Steps -->
+  <div style="width:100%;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+
+    <!-- Step 1 -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:18px;display:flex;gap:14px;align-items:flex-start;">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:22px;flex-shrink:0;">1</div>
+      <div>
+        <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:4px;">Everyone Joins</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;">Host creates a room and shares the <strong style="color:var(--purple);">6-letter code</strong>. All players join on their own phone using that code.</div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:18px;display:flex;gap:14px;align-items:flex-start;">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:22px;flex-shrink:0;">2</div>
+      <div>
+        <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:4px;">See Your Secret Word</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;">Each phone privately shows your role. <strong style="color:var(--green);">Citizens</strong> see the word (e.g. <em>"Car"</em>). <strong style="color:var(--red);">Impostors</strong> see <strong>???</strong> — you don't know the word!</div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:18px;display:flex;gap:14px;align-items:flex-start;">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:22px;flex-shrink:0;">3</div>
+      <div>
+        <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:4px;">Give Clues Out Loud</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;">Everyone takes turns giving <strong style="color:#fff;">one clue</strong> about their word — face to face! Don't say the exact word. Impostor must fake a convincing clue without knowing it!</div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:18px;display:flex;gap:14px;align-items:flex-start;">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:22px;flex-shrink:0;">4</div>
+      <div>
+        <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:4px;">Discuss & Debate</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;">Talk it out! Who sounded suspicious? Who gave a weird clue? Debate among yourselves. When ready, <strong style="color:var(--yellow);">host taps Stop → Vote</strong>.</div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:18px;display:flex;gap:14px;align-items:flex-start;">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ef4444,#dc2626);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:22px;flex-shrink:0;">5</div>
+      <div>
+        <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:4px;">Vote on Your Phone</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;">Everyone votes <strong style="color:#fff;">privately</strong> on their own phone. Most votes = eliminated. Results reveal who won — and who the Impostor really was! 🎉</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Win conditions -->
+  <div style="width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:16px;padding:16px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">👥</div>
+      <div style="font-family:'Bebas Neue',cursive;font-size:16px;color:var(--green);letter-spacing:1px;margin-bottom:6px;">CITIZENS WIN</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">Vote out the Impostor correctly</div>
+    </div>
+    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:16px;padding:16px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">🕵️</div>
+      <div style="font-family:'Bebas Neue',cursive;font-size:16px;color:var(--red);letter-spacing:1px;margin-bottom:6px;">IMPOSTOR WINS</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">Avoid being voted out & survive</div>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px;margin-bottom:20px;">
+    <div style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;color:var(--yellow);margin-bottom:12px;">💡 PRO TIPS</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="font-size:13px;color:rgba(255,255,255,0.6);display:flex;gap:8px;"><span>🟣</span><span>Impostors — listen carefully to others' clues before giving yours. Mirror their style!</span></div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6);display:flex;gap:8px;"><span>🟢</span><span>Citizens — give clues specific enough to prove you know the word, but vague enough to not hand it to the Impostor.</span></div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6);display:flex;gap:8px;"><span>🔴</span><span>Watch for hesitation! A long pause before giving a clue is very suspicious. 👀</span></div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6);display:flex;gap:8px;"><span>🟡</span><span>Best with 5–8 players for maximum chaos and fun!</span></div>
+    </div>
+  </div>
+
+  <!-- Example round -->
+  <div style="width:100%;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:18px;padding:18px;margin-bottom:24px;">
+    <div style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;color:var(--blue);margin-bottom:12px;">📝 EXAMPLE ROUND</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.8;">
+      Word pair: <strong style="color:var(--green);">Car</strong> (citizens) vs <strong style="color:var(--red);">Bike</strong> (impostor)<br>
+      Prasid: <em>"It has four wheels"</em> ✅<br>
+      Rahul: <em>"You need a licence for it"</em> ✅<br>
+      Sneha <span style="color:var(--red);">(impostor)</span>: <em>"People use it for daily travel"</em> 🤔<br>
+      Arjun: <em>"It can go very fast on the highway"</em> ✅<br><br>
+      <span style="color:var(--yellow);">Everyone suspects Sneha — her clue works for both! Vote time... 🗳️</span>
+    </div>
+  </div>
+
+  <button class="btn btn-primary w-full" onclick="goTo('home')" style="margin-bottom:8px;">
+    🎮 Let's Play!
+  </button>
+
 </div>
 
 <!-- ═══════════════════ SCREEN: CREATE ROOM ═══════════════════ -->
@@ -758,8 +852,8 @@ let selectedCategories = ["Vehicles","Food","Animals"];
 let myVote = null;
 
 // ─── Firebase ────────────────────────────────────────────────────────────────
-let firebaseConnected = window._fbReady || false;
-let db = window._fbDB || null;
+let firebaseConnected = false;
+let db = null;
 
 // In-memory fallback DB
 const memDB = {};
@@ -1769,11 +1863,36 @@ function goHome() {
 renderCategoryChips();
 updateCategoryInfo();
 
-// Auto-show Firebase connected status
-if (firebaseConnected) {
-  document.getElementById('fbStatusDot').className = 'status-dot green';
-  document.getElementById('fbStatusText').innerHTML = '<span style="color:var(--green)">🔥 Firebase connected — Cross-phone multiplayer active!</span>';
-}
+// ── Firebase auto-init (runs after SDKs are loaded) ──────────────────────────
+(function initFirebase() {
+  try {
+    const firebaseConfig = {
+      apiKey: "",
+      authDomain: "",
+      databaseURL: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: "",
+      measurementId: ""
+    };
+    if (!firebaseConfig.apiKey) {
+      console.warn('⚠️ No Firebase config set. Use Setup Firebase button on home screen.');
+      return;
+    }
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.database();
+    firebaseConnected = true;
+    document.getElementById('fbStatusDot').className = 'status-dot green';
+    document.getElementById('fbStatusText').innerHTML = '<span style="color:var(--green)">🔥 Firebase connected — Cross-phone multiplayer active!</span>';
+    console.log('✅ Firebase connected!');
+  } catch(e) {
+    firebaseConnected = false;
+    console.warn('⚠️ Firebase init failed:', e.message);
+  }
+})();
 </script>
 
 <!-- Footer -->
@@ -1783,4 +1902,3 @@ if (firebaseConnected) {
 
 </body>
 </html>
-
