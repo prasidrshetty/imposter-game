@@ -1886,23 +1886,21 @@ updateCategoryInfo();
 // ── Firebase auto-init (runs after SDKs are loaded) ──────────────────────────
 (function initFirebase() {
   try {
-    // First check localStorage for saved config
-    const saved = localStorage.getItem('impostor_firebase_config');
-    const firebaseConfig = saved ? JSON.parse(saved) : {
-      apiKey: "",
-      authDomain: "",
-      databaseURL: "",
-      projectId: "",
-      storageBucket: "",
-      messagingSenderId: "",
-      appId: "",
-      measurementId: ""
+    // ✅ Hardcoded config — connects automatically every time, no setup needed!
+    const HARDCODED = {
+      apiKey: "AIzaSyB3VfquYUOXpYNwONDrJeD0eoNrwKpR8rw",
+      authDomain: "imposter-game-a8ef3.firebaseapp.com",
+      databaseURL: "https://imposter-game-a8ef3-default-rtdb.firebaseio.com",
+      projectId: "imposter-game-a8ef3",
+      storageBucket: "imposter-game-a8ef3.firebasestorage.app",
+      messagingSenderId: "866014157331",
+      appId: "1:866014157331:web:27d84c398cd4568bd03de6",
+      measurementId: "G-SG9LG3SDTZ"
     };
 
-    if (!firebaseConfig.apiKey) {
-      console.warn('⚠️ No Firebase config found. Use Setup Firebase on home screen.');
-      return;
-    }
+    // Also check localStorage in case user set a different config via Setup button
+    const saved = localStorage.getItem('impostor_firebase_config');
+    const firebaseConfig = saved ? JSON.parse(saved) : HARDCODED;
 
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
@@ -1910,7 +1908,7 @@ updateCategoryInfo();
     db = firebase.database();
     firebaseConnected = true;
     showConnectedStatus();
-    console.log('✅ Firebase auto-connected from saved config!');
+    console.log('✅ Firebase connected!');
   } catch(e) {
     firebaseConnected = false;
     console.warn('⚠️ Firebase init failed:', e.message);
