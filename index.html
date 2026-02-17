@@ -878,6 +878,13 @@
       ✅ I've Seen My Word — Ready!
     </button>
 
+    <!-- Host override: shown only to host after everyone ready -->
+    <div id="hostForceDiscussion" class="hidden" style="margin-top:10px;">
+      <button class="btn btn-green w-full" onclick="forceStartDiscussion()">
+        👑 Everyone's Ready — Start Discussion!
+      </button>
+    </div>
+
   </div>
 
 </div>
@@ -1370,6 +1377,8 @@ function handleRoomUpdate(room) {
       revealDone = false;
       renderReveal(room); goTo('reveal');
     } else renderReveal(room);
+    // Auto-advance to discussion when all players ready (host fires it)
+    checkAllReady(room);
   }
   else if (phase === 'discussion') {
     if (currentScreen !== 'screen-discussion') {
@@ -1619,8 +1628,15 @@ function renderReveal(room) {
 
   const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
   const readyCount = players.filter(p => p.ready).length;
+  const allReady = readyCount === players.length && players.length > 0;
   renderPlayerStrip('revealPlayerStrip', players, null, 'ready');
-  document.getElementById('readyCount').textContent = `${readyCount} / ${players.length} players ready`;
+  document.getElementById('readyCount').textContent = `${readyCount} / ${players.length} ready`;
+
+  // Show host override button if all ready (fallback if auto-advance fails)
+  const hostOverride = document.getElementById('hostForceDiscussion');
+  if (hostOverride) {
+    hostOverride.classList.toggle('hidden', !(allReady && room.hostId === myId));
+  }
 
   // Trigger countdown only once when screen first shown
   if (!revealDone) {
@@ -1631,7 +1647,10 @@ function renderReveal(room) {
 
 async function playerReady() {
   if (!currentRoom) return;
+
+  // Mark self as ready in Firebase
   await storage.update(`rooms/${currentRoom.code}/players/${myId}`, { ready: true });
+
   const btn = document.getElementById('readyBtn');
   if (btn) {
     btn.disabled = true;
@@ -1639,12 +1658,32 @@ async function playerReady() {
     btn.style.opacity = '0.6';
   }
   playSound('click');
-  const room = await storage.get(`rooms/${currentRoom.code}`);
+
+  // If I'm the host, also check immediately after a small delay
+  if (currentRoom.hostId === myId) {
+    setTimeout(async () => {
+      const fresh = await storage.get(`rooms/${currentRoom?.code}`);
+      if (fresh) checkAllReady(fresh);
+    }, 600);
+  }
+}
+
+// Called every time room updates on reveal screen — host auto-advances when all ready
+async function checkAllReady(room) {
+  if (!room || room.hostId !== myId) return;   // only host fires phase change
+  if (room.phase !== 'reveal') return;          // only on reveal screen
   const players = Object.values(room.players || {});
+  if (players.length < 2) return;
   const allReady = players.every(p => p.ready);
-  if (allReady && room.hostId === myId) {
+  if (allReady) {
     await storage.update(`rooms/${currentRoom.code}`, { phase: 'discussion' });
   }
+}
+
+async function forceStartDiscussion() {
+  if (!currentRoom || currentRoom.hostId !== myId) return;
+  playSound('click');
+  await storage.update(`rooms/${currentRoom.code}`, { phase: 'discussion' });
 }
 
 // ─── DISCUSSION RENDER ────────────────────────────────────────────────────────
@@ -1771,9 +1810,11 @@ function renderVoting(room) {
     const btn = document.createElement('button');
     const isSelected = iVotedAlready === p.id;
     const isMe = p.id === myId;
+    const avatarDisplay = p.avatar || p.name[0].toUpperCase();
+    const isEmoji = p.avatar && p.avatar.length > 0;
     btn.className = 'vote-btn' + (isSelected ? ' selected' : '') + (iVotedAlready && !isSelected ? ' disabled' : '');
     btn.innerHTML = `
-      <div style="width:52px;height:52px;border-radius:50%;background:${getColor(i)};margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;">${p.name[0].toUpperCase()}</div>
+      <div style="width:52px;height:52px;border-radius:50%;background:${isEmoji?'rgba(255,255,255,0.08)':getColor(i)};margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:${isEmoji?'28px':'18px'};font-weight:900;border:2px solid ${isEmoji?'rgba(181,108,255,0.2)':getColor(i)};">${avatarDisplay}</div>
       <div class="vote-btn-name">${p.name}${isMe ? ' (You)' : ''}</div>
       <div class="vote-count">${voteCount > 0 ? '🔴'.repeat(Math.min(voteCount, 5)) + ` ${voteCount}` : '–'}</div>
     `;
