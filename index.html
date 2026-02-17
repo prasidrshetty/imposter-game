@@ -935,18 +935,19 @@
   </div>
 
   <!-- Host stop game button -->
-  <div id="hostVoteBtn">
-    <div style="display:flex;align-items:center;gap:10px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:14px;padding:10px 16px;margin-bottom:12px;">
+  <div id="hostVoteBtn" class="hidden">
+    <div style="display:flex;align-items:center;gap:10px;background:rgba(181,108,255,0.08);border:1px solid rgba(181,108,255,0.25);border-radius:14px;padding:10px 16px;margin-bottom:12px;backdrop-filter:blur(8px);">
       <span style="font-size:18px;">👑</span>
-      <span style="font-size:13px;color:rgba(168,85,247,0.8);">You created this room — only you can stop the game</span>
+      <span style="font-size:13px;color:rgba(181,108,255,0.9);">You're the host — tap below when discussion is done</span>
     </div>
-    <button class="btn btn-red w-full" onclick="hostStopGame()">
-      🛑 Stop Discussion — Go to Vote
+    <button class="btn btn-red w-full" onclick="hostStopGame()" id="stopDiscBtn"
+      style="animation:glowPulse 2s ease-in-out infinite;">
+      🗳️ Stop Discussion — Start Voting!
     </button>
   </div>
-  <div id="guestVoteWait" class="hidden" style="text-align:center;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;font-size:14px;color:var(--muted);">
+  <div id="guestVoteWait" class="hidden" style="text-align:center;padding:16px;background:rgba(14,10,28,0.65);border:1px solid rgba(181,108,255,0.15);border-radius:16px;font-size:14px;color:var(--muted);backdrop-filter:blur(12px);">
     <div id="discHostName" style="color:var(--purple);font-weight:700;font-size:15px;margin-bottom:4px;"></div>
-    ⏳ Waiting for host to stop discussion & start voting...
+    ⏳ Waiting for host to start voting...
   </div>
 </div>
 
@@ -1650,60 +1651,96 @@ async function playerReady() {
 function renderDiscussion(room) {
   document.getElementById('discRound').textContent = room.round || 1;
 
+  // Define players FIRST so they're available everywhere below
+  const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
   const amImpostor = (room.impostorIds || []).includes(myId);
+
+  // Role reminder badge
   const badge = document.getElementById('myRoleBadge');
   if (amImpostor) {
-    badge.style.background = 'rgba(239,68,68,0.15)';
-    badge.style.border = '1px solid rgba(239,68,68,0.3)';
-    badge.style.color = '#ef4444';
+    badge.style.cssText = 'width:100%;padding:10px 16px;border-radius:14px;text-align:center;font-size:13px;font-weight:700;background:rgba(255,77,109,0.12);border:1px solid rgba(255,77,109,0.3);color:var(--red);';
     badge.innerHTML = '🕵️ You are the <strong>IMPOSTOR</strong> — Blend in, don\'t reveal you don\'t know!';
   } else {
-    badge.style.background = 'rgba(34,197,94,0.12)';
-    badge.style.border = '1px solid rgba(34,197,94,0.3)';
-    badge.style.color = '#22c55e';
+    badge.style.cssText = 'width:100%;padding:10px 16px;border-radius:14px;text-align:center;font-size:13px;font-weight:700;background:rgba(52,216,136,0.1);border:1px solid rgba(52,216,136,0.3);color:var(--green);';
     badge.innerHTML = `👤 <strong>CITIZEN</strong> — Your word: <span style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;">${room.citizenWord}</span>`;
   }
 
-  if (currentRoom?.hostId === myId) {
-    document.getElementById('hostVoteBtn').classList.remove('hidden');
-    document.getElementById('guestVoteWait').classList.add('hidden');
-  } else {
-    document.getElementById('hostVoteBtn').classList.add('hidden');
-    document.getElementById('guestVoteWait').classList.remove('hidden');
+  // Host vs guest controls
+  const iAmHost = room.hostId === myId;
+  document.getElementById('hostVoteBtn').classList.toggle('hidden', !iAmHost);
+  document.getElementById('guestVoteWait').classList.toggle('hidden', iAmHost);
+  if (!iAmHost) {
     const hostPlayer = players.find(p => p.id === room.hostId);
     const discHostEl = document.getElementById('discHostName');
-    if (discHostEl) discHostEl.textContent = `👑 ${hostPlayer?.name || 'Host'} is in control`;
+    if (discHostEl) discHostEl.textContent = `👑 ${hostPlayer?.name || 'Host'} decides when to vote`;
   }
 
-  // Player order
-  const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
-
+  // Player strips
   renderPlayerStrip('discPlayerStrip', players, null, 'talking');
 
+  // Speaking order
   const order = document.getElementById('discussionOrder');
   order.innerHTML = '';
   players.forEach((p, i) => {
+    const avatarDisplay = p.avatar || p.name[0].toUpperCase();
+    const isEmoji = p.avatar && p.avatar.length > 0;
+    const suffix = ['st','nd','rd'][i] || 'th';
     const div = document.createElement('div');
-    div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;';
+    div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(14,10,28,0.5);border:1px solid rgba(181,108,255,0.1);border-radius:12px;backdrop-filter:blur(8px);';
     div.innerHTML = `
-      <div style="width:26px;height:26px;border-radius:50%;background:${getColor(i)};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex-shrink:0;">${p.name[0]}</div>
-      <span style="font-size:14px;font-weight:700;">${p.name}${p.id===myId?' (You)':''}</span>
-      <span style="margin-left:auto;font-size:11px;color:var(--muted);">${i+1}${['st','nd','rd'][i]||'th'}</span>
+      <div style="width:28px;height:28px;border-radius:50%;background:${isEmoji?'rgba(255,255,255,0.08)':getColor(i)};display:flex;align-items:center;justify-content:center;font-size:${isEmoji?'16px':'11px'};font-weight:900;flex-shrink:0;">${avatarDisplay}</div>
+      <span style="font-size:14px;font-weight:700;color:${p.id===myId?'var(--purple)':'var(--text)'};">${p.name}${p.id===myId?' (You)':''}</span>
+      <span style="margin-left:auto;font-size:12px;color:var(--muted);font-family:'Bebas Neue',cursive;letter-spacing:1px;">${i+1}${suffix}</span>
     `;
     order.appendChild(div);
   });
-
 }
 
 async function hostStopGame() {
   if (!currentRoom || currentRoom.hostId !== myId) return;
-  await storage.update(`rooms/${currentRoom.code}`, { phase: 'voting', votes: {} });
-}
 
-async function goToVote() {
-  if (currentRoom?.hostId === myId) {
-    await storage.update(`rooms/${currentRoom.code}`, { phase: 'voting', votes: {} });
-  }
+  // Show confirmation overlay
+  const confirmed = await new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);
+      z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;
+    `;
+    overlay.innerHTML = `
+      <div style="background:rgba(14,10,28,0.95);border:1px solid rgba(181,108,255,0.3);
+        border-radius:24px;padding:28px 24px;width:100%;max-width:340px;text-align:center;
+        box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(181,108,255,0.1);">
+        <div style="font-size:48px;margin-bottom:12px;">🗳️</div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:28px;letter-spacing:3px;
+          background:linear-gradient(135deg,#e8d8ff,#b56cff);-webkit-background-clip:text;
+          -webkit-text-fill-color:transparent;margin-bottom:8px;">START VOTING?</div>
+        <p style="font-size:14px;color:rgba(220,210,255,0.5);margin-bottom:24px;line-height:1.6;">
+          This will end the discussion and send everyone to vote. Make sure everyone has given their clue!
+        </p>
+        <div style="display:flex;gap:12px;">
+          <button id="stopCancel" style="flex:1;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);
+            background:rgba(255,255,255,0.06);color:#fff;cursor:pointer;font-family:'Nunito',sans-serif;
+            font-weight:700;font-size:15px;">Cancel</button>
+          <button id="stopConfirm" style="flex:2;padding:14px;border-radius:14px;border:none;
+            background:linear-gradient(135deg,#f87171,#ef4444 45%,#dc2626);color:#fff;cursor:pointer;
+            font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;
+            box-shadow:0 8px 24px rgba(239,68,68,0.45);">🗳️ Yes, Start Voting!</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('stopConfirm').onclick = () => { overlay.remove(); resolve(true); };
+    document.getElementById('stopCancel').onclick  = () => { overlay.remove(); resolve(false); };
+    overlay.onclick = e => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+  });
+
+  if (!confirmed) return;
+
+  // Disable button and update Firebase
+  const btn = document.getElementById('stopDiscBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Starting vote...'; }
+  playSound('suspense');
+  await storage.update(`rooms/${currentRoom.code}`, { phase: 'voting', votes: {} });
 }
 
 // ─── VOTING RENDER ────────────────────────────────────────────────────────────
