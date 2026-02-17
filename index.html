@@ -60,7 +60,17 @@
     letter-spacing: 4px; line-height:1;
     background: linear-gradient(135deg, #fff 0%, #a855f7 45%, #3b82f6 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 30px rgba(168,85,247,0.5));
+    animation: neonBlink 2.5s ease-in-out infinite;
+  }
+  @keyframes neonBlink {
+    0%   { filter: drop-shadow(0 0 8px rgba(168,85,247,0.9))  drop-shadow(0 0 20px rgba(168,85,247,0.6)) drop-shadow(0 0 40px rgba(168,85,247,0.4)); }
+    45%  { filter: drop-shadow(0 0 2px rgba(168,85,247,0.2))  drop-shadow(0 0 4px  rgba(168,85,247,0.1)) drop-shadow(0 0 6px  rgba(59,130,246,0.1)); }
+    50%  { filter: drop-shadow(0 0 0px rgba(168,85,247,0))    drop-shadow(0 0 0px  rgba(168,85,247,0))   drop-shadow(0 0 0px  rgba(59,130,246,0)); }
+    55%  { filter: drop-shadow(0 0 2px rgba(168,85,247,0.2))  drop-shadow(0 0 4px  rgba(168,85,247,0.1)) drop-shadow(0 0 6px  rgba(59,130,246,0.1)); }
+    60%  { filter: drop-shadow(0 0 8px rgba(168,85,247,0.9))  drop-shadow(0 0 20px rgba(168,85,247,0.6)) drop-shadow(0 0 40px rgba(168,85,247,0.4)); }
+    62%  { filter: drop-shadow(0 0 2px rgba(168,85,247,0.2))  drop-shadow(0 0 4px  rgba(168,85,247,0.1)); }
+    64%  { filter: drop-shadow(0 0 8px rgba(168,85,247,0.9))  drop-shadow(0 0 20px rgba(168,85,247,0.6)) drop-shadow(0 0 40px rgba(59,130,246,0.4)); }
+    100% { filter: drop-shadow(0 0 8px rgba(168,85,247,0.9))  drop-shadow(0 0 20px rgba(168,85,247,0.6)) drop-shadow(0 0 40px rgba(168,85,247,0.4)); }
   }
   .title-big {
     font-family:'Bebas Neue', cursive;
@@ -94,44 +104,115 @@
   input[type=number] { -moz-appearance:textfield; text-align:center; }
   input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; }
 
-  /* Buttons */
+  /* ══ BUTTONS ══════════════════════════════════════════════════════════════ */
+  @keyframes shimmerSlide {
+    0%   { transform: translateX(-100%) skewX(-15deg); }
+    100% { transform: translateX(250%)  skewX(-15deg); }
+  }
+  @keyframes glowPulse {
+    0%,100% { box-shadow: var(--btn-shadow), 0 0 0 0 var(--btn-glow); }
+    50%      { box-shadow: var(--btn-shadow), 0 0 0 8px transparent; }
+  }
+  @keyframes btnPress {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  @keyframes rippleOut {
+    0%   { transform: scale(0); opacity: 0.5; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+
   .btn {
     width:100%; padding:16px; border-radius:16px; border:none;
     font-family:'Nunito',sans-serif; font-weight:800; font-size:16px;
     cursor:pointer; letter-spacing:0.5px;
-    transition: all 0.2s ease; position:relative; overflow:hidden;
-    min-height:52px; /* minimum touch target */
-    -webkit-appearance:none;
+    position:relative; overflow:hidden;
+    min-height:52px; -webkit-appearance:none;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    animation: glowPulse 3s ease-in-out infinite;
+    /* shimmer pseudo-element */
   }
-  .btn:active { transform: scale(0.97); }
+  /* Shimmer sweep on hover */
+  .btn::before {
+    content:'';
+    position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
+    transform: translateX(-100%) skewX(-15deg);
+    transition: none;
+    pointer-events:none;
+  }
+  .btn:hover::before {
+    animation: shimmerSlide 0.55s ease forwards;
+  }
+  /* Ripple on tap */
+  .btn .ripple {
+    position:absolute; border-radius:50%;
+    width:60px; height:60px; margin-top:-30px; margin-left:-30px;
+    background:rgba(255,255,255,0.35);
+    animation:rippleOut 0.55s ease-out forwards;
+    pointer-events:none;
+  }
+  .btn:active  { animation:btnPress 0.2s ease forwards; filter:brightness(1.15); }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; animation:none; }
+
+  /* Primary — purple */
   .btn-primary {
-    background: linear-gradient(135deg, #a855f7, #7c3aed);
-    color:#fff; box-shadow: 0 8px 32px rgba(168,85,247,0.4);
+    --btn-shadow: 0 8px 28px rgba(168,85,247,0.45);
+    --btn-glow:   rgba(168,85,247,0.45);
+    background: linear-gradient(135deg, #c084fc, #a855f7 45%, #7c3aed);
+    color:#fff; box-shadow: var(--btn-shadow);
   }
-  .btn-primary:hover { box-shadow: 0 12px 40px rgba(168,85,247,0.6); }
+  .btn-primary:hover { filter:brightness(1.1); }
+
+  /* Secondary */
   .btn-secondary {
+    --btn-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    --btn-glow:   rgba(255,255,255,0.08);
     background: rgba(255,255,255,0.07); color:#fff;
-    border:1px solid var(--border);
+    border:1px solid rgba(255,255,255,0.14);
+    box-shadow: var(--btn-shadow);
   }
+  .btn-secondary:hover { background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.25); }
+
+  /* Green */
   .btn-green {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    color:#fff; box-shadow: 0 8px 32px rgba(34,197,94,0.4);
+    --btn-shadow: 0 8px 28px rgba(34,197,94,0.45);
+    --btn-glow:   rgba(34,197,94,0.45);
+    background: linear-gradient(135deg, #4ade80, #22c55e 45%, #16a34a);
+    color:#fff; box-shadow: var(--btn-shadow);
   }
+  .btn-green:hover { filter:brightness(1.1); }
+
+  /* Red */
   .btn-red {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color:#fff; box-shadow: 0 8px 32px rgba(239,68,68,0.4);
+    --btn-shadow: 0 8px 28px rgba(239,68,68,0.45);
+    --btn-glow:   rgba(239,68,68,0.45);
+    background: linear-gradient(135deg, #f87171, #ef4444 45%, #dc2626);
+    color:#fff; box-shadow: var(--btn-shadow);
   }
+  .btn-red:hover { filter:brightness(1.1); }
+
+  /* Blue */
   .btn-blue {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color:#fff; box-shadow: 0 8px 32px rgba(59,130,246,0.4);
+    --btn-shadow: 0 8px 28px rgba(59,130,246,0.45);
+    --btn-glow:   rgba(59,130,246,0.45);
+    background: linear-gradient(135deg, #60a5fa, #3b82f6 45%, #2563eb);
+    color:#fff; box-shadow: var(--btn-shadow);
   }
+  .btn-blue:hover { filter:brightness(1.1); }
+
+  /* Yellow */
   .btn-yellow {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color:#fff; box-shadow: 0 8px 32px rgba(245,158,11,0.4);
+    --btn-shadow: 0 8px 28px rgba(245,158,11,0.45);
+    --btn-glow:   rgba(245,158,11,0.45);
+    background: linear-gradient(135deg, #fbbf24, #f59e0b 45%, #d97706);
+    color:#fff; box-shadow: var(--btn-shadow);
   }
-  .btn-sm { padding:10px 20px; font-size:14px; border-radius:12px; width:auto; }
+  .btn-yellow:hover { filter:brightness(1.1); }
+
+  .btn-sm   { padding:10px 20px; font-size:14px; border-radius:12px; width:auto; }
   .btn-icon { font-size:20px; margin-right:8px; }
-  .btn:disabled { opacity:0.4; cursor:not-allowed; }
 
   /* Choice Cards (Home) */
   .choice-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; width:100%; }
@@ -140,15 +221,24 @@
     border-radius:22px; padding:28px 16px; cursor:pointer;
     text-align:center; transition:all 0.25s;
     display:flex; flex-direction:column; align-items:center; gap:10px;
+    position:relative; overflow:hidden;
   }
-  .choice-card:active { transform:scale(0.96); }
-  .choice-card.purple:hover, .choice-card.purple:focus { background:rgba(168,85,247,0.15); border-color:rgba(168,85,247,0.5); box-shadow:0 16px 48px rgba(168,85,247,0.2); }
-  .choice-card.blue:hover, .choice-card.blue:focus { background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.5); box-shadow:0 16px 48px rgba(59,130,246,0.2); }
-  .choice-icon { font-size:48px; }
+  .choice-card::before {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    transform: translateX(-100%) skewX(-15deg);
+    pointer-events:none;
+  }
+  .choice-card:hover::before  { animation: shimmerSlide 0.5s ease forwards; }
+  .choice-card:active { transform:scale(0.95); }
+  .choice-card.purple:hover { background:rgba(168,85,247,0.15); border-color:rgba(168,85,247,0.5); box-shadow:0 16px 48px rgba(168,85,247,0.25); transform:translateY(-2px); }
+  .choice-card.blue:hover   { background:rgba(59,130,246,0.15);  border-color:rgba(59,130,246,0.5);  box-shadow:0 16px 48px rgba(59,130,246,0.25);  transform:translateY(-2px); }
+  .choice-icon  { font-size:48px; transition:transform 0.3s ease; }
+  .choice-card:hover .choice-icon { transform:scale(1.2) rotate(-5deg); }
   .choice-title { font-family:'Bebas Neue',cursive; font-size:22px; letter-spacing:2px; }
   .choice-card.purple .choice-title { color:var(--purple); }
-  .choice-card.blue .choice-title { color:var(--blue); }
-  .choice-desc { font-size:12px; color:var(--muted); }
+  .choice-card.blue   .choice-title { color:var(--blue); }
+  .choice-desc  { font-size:12px; color:var(--muted); }
 
   /* Code display */
   .code-display {
@@ -391,7 +481,31 @@
   .scrollable::-webkit-scrollbar { width:3px; }
   .scrollable::-webkit-scrollbar-thumb { background:rgba(168,85,247,0.4); border-radius:3px; }
 
-  /* ── Mobile safe area support ── */
+  /* ── Leaderboard ── */
+  .lb-row {
+    display:flex;align-items:center;gap:12px;
+    padding:14px 16px;border-radius:16px;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    transition:all 0.4s ease;
+    position:relative;overflow:hidden;
+  }
+  .lb-row.me {
+    background:rgba(168,85,247,0.12);
+    border-color:rgba(168,85,247,0.35);
+  }
+  .lb-row.first  { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.4); }
+  .lb-row.second { background:rgba(148,163,184,0.10); border-color:rgba(148,163,184,0.3); }
+  .lb-row.third  { background:rgba(180,120,60,0.12); border-color:rgba(180,120,60,0.3); }
+  .lb-rank { font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:1px;min-width:32px;text-align:center; }
+  .lb-score { font-family:'Bebas Neue',cursive;font-size:28px;letter-spacing:1px;margin-left:auto; }
+  @keyframes scorePop { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-40px);opacity:0} }
+  .score-delta {
+    position:absolute;right:16px;top:4px;
+    font-family:'Bebas Neue',cursive;font-size:22px;
+    animation:scorePop 1.5s ease-out forwards;
+    pointer-events:none;
+  }
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     .screen { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
     #screen-results > div:last-child { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
@@ -953,10 +1067,44 @@
 
     <!-- Action buttons -->
     <div style="display:flex;gap:12px;width:100%;">
-      <button class="btn btn-secondary" style="flex:1;" onclick="goHome()">🏠 Home</button>
-      <button class="btn btn-primary" style="flex:2;" onclick="playAgain()" id="playAgainBtn">🔄 Play Again</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="goTo('leaderboard')">← Leaderboard</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="playAgain()" id="playAgainBtn">🔄 Next Round</button>
     </div>
   </div>
+</div>
+
+<!-- ═══════════════════ SCREEN: LEADERBOARD ═══════════════════ -->
+<div class="screen hidden" id="screen-leaderboard" style="justify-content:flex-start;padding-top:32px;gap:16px;">
+  <div style="text-align:center;width:100%;">
+    <div class="card-label">After Round <span id="lbRound">1</span></div>
+    <div class="title-big" style="color:var(--yellow);font-size:clamp(36px,10vw,52px);">🏆 LEADERBOARD</div>
+    <p class="subtitle mt-4">Scores so far</p>
+  </div>
+
+  <!-- Score list -->
+  <div style="width:100%;display:flex;flex-direction:column;gap:10px;" id="leaderboardList"></div>
+
+  <!-- Scoring legend -->
+  <div style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:14px 18px;">
+    <div class="card-label" style="margin-bottom:8px;">How points work</div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:rgba(255,255,255,0.55);">
+      <div style="display:flex;justify-content:space-between;"><span>🎯 Correctly voted impostor</span><span style="color:var(--green);font-weight:700;">+3 pts</span></div>
+      <div style="display:flex;justify-content:space-between;"><span>🕵️ Impostor survived undetected</span><span style="color:var(--red);font-weight:700;">+4 pts</span></div>
+      <div style="display:flex;justify-content:space-between;"><span>😬 Wrong vote (innocent voted out)</span><span style="color:var(--muted);font-weight:700;">+0 pts</span></div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div id="lbHostControls" class="hidden" style="width:100%;display:flex;flex-direction:column;gap:10px;">
+    <button class="btn btn-secondary w-full" onclick="goToResults()">📋 See Round Details</button>
+    <button class="btn btn-primary w-full" onclick="playAgain()">🔄 Next Round</button>
+    <p style="text-align:center;font-size:12px;color:var(--muted);">Only host can start next round</p>
+  </div>
+  <div id="lbGuestWait" class="hidden" style="text-align:center;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;font-size:14px;color:var(--muted);">
+    <div style="margin-bottom:6px;">⏳ Waiting for host to start next round...</div>
+    <button onclick="goToResults()" style="background:none;border:none;color:var(--blue);cursor:pointer;font-family:'Nunito',sans-serif;font-size:13px;text-decoration:underline;">📋 See round details</button>
+  </div>
+  <button class="btn btn-secondary w-full" onclick="goHome()">🏠 Leave Game</button>
 </div>
 
 <!-- ═══════════════════ JAVASCRIPT ═══════════════════ -->
@@ -1289,6 +1437,12 @@ function handleRoomUpdate(room) {
       renderVoting(room); goTo('vote');
     } else renderVoting(room);
   }
+  else if (phase === 'leaderboard') {
+    if (currentScreen !== 'screen-leaderboard') {
+      renderLeaderboard(room); goTo('leaderboard');
+      playSound('vote');
+    } else renderLeaderboard(room);
+  }
   else if (phase === 'results') {
     if (currentScreen !== 'screen-results') { renderResults(room); goTo('results'); }
   }
@@ -1320,6 +1474,7 @@ function renderLobby(room) {
         <div class="player-name">${p.name}${isMe ? ' <span style="color:var(--muted);font-size:12px;">(You)</span>' : ''}</div>
         ${isPlayerHost ? '<div class="player-badge">👑 Host</div>' : ''}
       </div>
+      ${room.scores && room.scores[p.id] ? `<div style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--yellow);margin-right:${(iAmHost && !isPlayerHost && !isMe)?'8px':'0'};">${room.scores[p.id]}pts</div>` : ''}
       ${iAmHost && !isPlayerHost && !isMe
         ? `<button onclick="kickPlayer('${p.id}','${p.name}')"
             style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);
@@ -1652,19 +1807,43 @@ async function castVote(targetId) {
 async function resolveVotes(room) {
   const votes = room.votes || {};
   const players = Object.values(room.players || {});
+  const impostorIds = room.impostorIds || [];
 
   // Tally votes
   const tally = {};
   Object.values(votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
   const maxV = Math.max(...Object.values(tally));
   const topIds = Object.keys(tally).filter(id => tally[id] === maxV);
-  // Tie-break: random among top
   const eliminatedId = topIds[Math.floor(Math.random() * topIds.length)];
+  const wasImpostor = impostorIds.includes(eliminatedId);
+
+  // ── Calculate scores ──────────────────────────────────────────────────────
+  const prevScores = room.scores || {};
+  const roundDeltas = {}; // points earned this round per player
+  const newScores = {};
+
+  players.forEach(p => {
+    const prev = prevScores[p.id] || 0;
+    let delta = 0;
+    const isImpostor = impostorIds.includes(p.id);
+    const myVoteTarget = votes[p.id];
+    const iVotedCorrectly = myVoteTarget && impostorIds.includes(myVoteTarget);
+
+    if (isImpostor && !wasImpostor) {
+      delta = 4; // impostor survived
+    } else if (!isImpostor && wasImpostor && iVotedCorrectly) {
+      delta = 3; // citizen found impostor
+    }
+    roundDeltas[p.id] = delta;
+    newScores[p.id] = prev + delta;
+  });
 
   await storage.update(`rooms/${room.code}`, {
-    phase: 'results',
+    phase: 'leaderboard',
     eliminated: eliminatedId,
     finalTally: tally,
+    scores: newScores,
+    roundDeltas,
   });
 }
 
@@ -1824,14 +2003,91 @@ function spawnConfetti() {
   }
 }
 
+function goToResults() {
+  if (currentRoom) { renderResults(currentRoom); goTo('results'); }
+}
+
+function renderLeaderboard(room) {
+  document.getElementById('lbRound').textContent = room.round || 1;
+
+  const players = Object.values(room.players || {}).sort((a,b) => a.joinedAt - b.joinedAt);
+  const scores = room.scores || {};
+  const deltas = room.roundDeltas || {};
+
+  // Sort by score descending
+  const ranked = [...players].sort((a,b) => (scores[b.id]||0) - (scores[a.id]||0));
+
+  const list = document.getElementById('leaderboardList');
+  list.innerHTML = '';
+
+  const medals = ['🥇','🥈','🥉'];
+  const rowClasses = ['first','second','third'];
+
+  ranked.forEach((p, i) => {
+    const score = scores[p.id] || 0;
+    const delta = deltas[p.id] || 0;
+    const isMe = p.id === myId;
+    const rank = i + 1;
+    const avatarDisplay = p.avatar || p.name[0].toUpperCase();
+    const isEmoji = p.avatar && p.avatar.length > 0;
+    const playerIdx = players.indexOf(p);
+
+    const row = document.createElement('div');
+    row.className = `lb-row${isMe ? ' me' : ''}${i < 3 ? ' ' + rowClasses[i] : ''}`;
+
+    row.innerHTML = `
+      <div class="lb-rank" style="color:${i===0?'var(--yellow)':i===1?'#94a3b8':i===2?'#b47c3c':'rgba(255,255,255,0.4)'};">
+        ${i < 3 ? medals[i] : rank}
+      </div>
+      <div style="width:38px;height:38px;border-radius:50%;background:${isEmoji?'rgba(255,255,255,0.08)':getColor(playerIdx)};display:flex;align-items:center;justify-content:center;font-size:${isEmoji?'22px':'14px'};font-weight:900;flex-shrink:0;">
+        ${avatarDisplay}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          ${p.name}${isMe?' <span style="color:var(--purple);font-size:12px;">(You)</span>':''}
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+          ${delta > 0 ? `<span style="color:var(--green);">+${delta} this round</span>` : '<span style="color:rgba(255,255,255,0.2);">+0 this round</span>'}
+        </div>
+      </div>
+      <div class="lb-score" style="color:${i===0?'var(--yellow)':i===1?'#94a3b8':i===2?'#b47c3c':'#fff'};">
+        ${score}
+      </div>
+    `;
+
+    // Show floating +points if earned
+    if (delta > 0) {
+      const badge = document.createElement('div');
+      badge.className = 'score-delta';
+      badge.textContent = '+' + delta;
+      badge.style.color = delta >= 4 ? 'var(--red)' : 'var(--green)';
+      row.appendChild(badge);
+    }
+
+    list.appendChild(row);
+  });
+
+  // Show host/guest controls
+  if (room.hostId === myId) {
+    document.getElementById('lbHostControls').classList.remove('hidden');
+    document.getElementById('lbGuestWait').classList.add('hidden');
+  } else {
+    document.getElementById('lbHostControls').classList.add('hidden');
+    document.getElementById('lbGuestWait').classList.remove('hidden');
+  }
+}
+
 async function playAgain() {
   if (!currentRoom || currentRoom.hostId !== myId) return;
   const players = Object.values(currentRoom.players||{});
   const reset = {};
+  // Preserve scores and avatars across rounds!
   players.forEach(p => { reset[p.id] = {...p, ready:false, vote:null}; });
   await storage.update(`rooms/${currentRoom.code}`, {
     phase: 'lobby', citizenWord:'', impostorWord:'',
-    impostorIds:[], votes:{}, eliminated:null, players:reset, kicked:{},
+    impostorIds:[], votes:{}, eliminated:null, players:reset,
+    kicked:{}, roundDeltas:{},
+    // scores persist — NOT reset here
   });
   myVote = null;
 }
@@ -2291,6 +2547,19 @@ function listenAccusations(roomCode) {
     if (data) renderAccusation(data);
   });
 }
+
+// ─── RIPPLE EFFECT ────────────────────────────────────────────────────────────
+document.addEventListener('pointerdown', function(e) {
+  const btn = e.target.closest('.btn');
+  if (!btn || btn.disabled) return;
+  const rect = btn.getBoundingClientRect();
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  ripple.style.top  = (e.clientY - rect.top)  + 'px';
+  ripple.style.left = (e.clientX - rect.left) + 'px';
+  btn.appendChild(ripple);
+  ripple.addEventListener('animationend', () => ripple.remove());
+});
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 renderCategoryChips();
