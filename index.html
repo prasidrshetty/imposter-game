@@ -927,12 +927,11 @@
     <div class="card-label" style="color:var(--red);margin-bottom:10px;">🕵️ Anonymous Accusation</div>
     <div class="accusation-feed" id="accusationFeed"></div>
     <div style="display:flex;gap:8px;margin-top:10px;" id="accusationInputArea">
-      <input type="text" id="accusationInput" placeholder="Send anonymous message..." maxlength="60"
+      <input type="text" id="accusationInput" placeholder="Send anonymous message..." maxlength="80"
         style="flex:1;font-size:14px;padding:10px 14px;"
         onkeydown="if(event.key==='Enter')sendAccusation()"/>
-      <button onclick="sendAccusation()" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:10px 16px;color:var(--red);cursor:pointer;font-weight:700;font-family:'Nunito',sans-serif;white-space:nowrap;font-size:13px;">Send 📨</button>
+      <button onclick="sendAccusation()" style="background:rgba(255,77,109,0.2);border:1px solid rgba(255,77,109,0.4);border-radius:12px;padding:10px 16px;color:var(--red);cursor:pointer;font-weight:700;font-family:'Nunito',sans-serif;white-space:nowrap;font-size:13px;">Send 📨</button>
     </div>
-    <div id="accusationUsed" class="hidden" style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px;">You've used your anonymous message</div>
   </div>
 
   <!-- Player order -->
@@ -1092,7 +1091,6 @@ let currentRoom = null;
 let selectedCategories = ["Vehicles","Food","Animals"];
 let myVote = null;
 let soundEnabled = true;
-let accusationSent = false;
 
 const AVATARS = ["🎭","🕵️","👻","🤖","🦊","🐺","🦁","🐯","🎃","👽","🤡","🦸","🧙","🥷","🤠","😈","👾","🦝","🐸","🦄","🐉","💀"];
 
@@ -1382,9 +1380,6 @@ function handleRoomUpdate(room) {
   }
   else if (phase === 'discussion') {
     if (currentScreen !== 'screen-discussion') {
-      accusationSent = false;
-      document.getElementById('accusationInputArea').classList.remove('hidden');
-      document.getElementById('accusationUsed').classList.add('hidden');
       document.getElementById('accusationFeed').innerHTML = '';
       renderDiscussion(room); goTo('discussion');
       listenReactions(room.code);
@@ -2537,24 +2532,19 @@ function listenReactions(roomCode) {
 
 // ─── ANONYMOUS ACCUSATION ─────────────────────────────────────────────────────
 async function sendAccusation() {
-  if (accusationSent) return;
   const input = document.getElementById('accusationInput');
   const msg = input.value.trim();
   if (!msg) return;
 
-  accusationSent = true;
   input.value = '';
-  document.getElementById('accusationInputArea').classList.add('hidden');
-  document.getElementById('accusationUsed').classList.remove('hidden');
+  playSound('click');
 
   const accusation = { msg, t: Date.now() };
   if (firebaseConnected && db && currentRoom) {
     await db.ref(`rooms/${currentRoom.code}/accusations`).push(accusation);
   } else {
-    // demo mode — show locally
     renderAccusation(accusation);
   }
-  playSound('click');
 }
 
 function renderAccusation(data) {
