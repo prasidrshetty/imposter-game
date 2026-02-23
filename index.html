@@ -1079,6 +1079,7 @@ const WORD_PAIRS = {
   Electronics: [["Phone","Tablet"],["Laptop","Desktop"],["TV","Monitor"],["Camera","Webcam"],["Headphones","Earbuds"],["Keyboard","Mouse"]],
   Clothes: [["Shirt","Jacket"],["Shoes","Boots"],["Hat","Cap"],["Jeans","Trousers"],["Dress","Skirt"],["Gloves","Mittens"]],
   Nature: [["Rain","Snow"],["Sun","Moon"],["River","Stream"],["Tree","Bush"],["Rose","Lily"],["Gold","Silver"]],
+  Tech: [["Google","Bing"],["iPhone","Android"],["Windows","Mac"],["Netflix","Spotify"],["Chrome","Safari"],["GitHub","GitLab"],["React","Vue"]],
 };
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -1198,6 +1199,16 @@ function showToast(msg, type='info') {
 function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function genCode() { return Math.random().toString(36).substring(2,8).toUpperCase(); }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).substring(2,5); }
+
+// Proper Fisher-Yates shuffle (unbiased, truly random)
+function shuffle(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 const AVATAR_COLORS = ['#a855f7','#3b82f6','#22c55e','#ef4444','#f59e0b','#ec4899','#14b8a6','#f97316','#8b5cf6','#06b6d4'];
 function getColor(i) { return AVATAR_COLORS[i % AVATAR_COLORS.length]; }
@@ -1537,14 +1548,36 @@ async function startGame() {
   const players = Object.values(room.players || {});
   if (players.length < 3) return showToast('Need at least 3 players!', 'error');
 
+  // Build word pool from selected categories
   const pool = (room.categories||['Vehicles']).flatMap(c => WORD_PAIRS[c] || []);
-  const pair = rand(pool);
+  if (pool.length === 0) return showToast('No word pairs available!', 'error');
 
-  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  // Track used pairs to avoid repeats (stored in room state)
+  const usedPairs = room.usedPairs || [];
+  let availablePairs = pool.filter(pair => {
+    const key = pair.join('|');
+    return !usedPairs.includes(key);
+  });
+
+  // If all pairs used, reset and use full pool again
+  if (availablePairs.length === 0) {
+    availablePairs = pool;
+    await storage.update(`rooms/${room.code}`, { usedPairs: [] });
+  }
+
+  // Pick random pair and mark as used
+  const pair = rand(availablePairs);
+  const pairKey = pair.join('|');
+  await storage.update(`rooms/${room.code}`, {
+    usedPairs: [...(room.usedPairs || []), pairKey]
+  });
+
+  // PROPER random shuffle using Fisher-Yates
+  const shuffled = shuffle(players);
   const impostorCount = Math.min(room.impostors, Math.floor(players.length / 3));
   const impostorIds = shuffled.slice(0, impostorCount).map(p => p.id);
 
-  // Reset ready
+  // Reset ready flags
   const updatedPlayers = {};
   players.forEach(p => { updatedPlayers[p.id] = {...p, ready: false, vote: null}; });
 
@@ -2109,12 +2142,18 @@ async function playAgain() {
   if (!currentRoom || currentRoom.hostId !== myId) return;
   const players = Object.values(currentRoom.players||{});
   const reset = {};
-  // Preserve scores and avatars across rounds!
   players.forEach(p => { reset[p.id] = {...p, ready:false, vote:null}; });
   await storage.update(`rooms/${currentRoom.code}`, {
-    phase: 'lobby', citizenWord:'', impostorWord:'',
-    impostorIds:[], votes:{}, eliminated:null, players:reset,
-    kicked:{}, roundDeltas:{},
+    phase: 'lobby',
+    citizenWord:'',
+    impostorWord:'',
+    impostorIds:[],
+    votes:{},
+    eliminated:null,
+    players:reset,
+    kicked:{},
+    roundDeltas:{},
+    usedPairs: currentRoom.usedPairs || [], // Keep used pairs across rounds
     // scores persist — NOT reset here
   });
   myVote = null;
