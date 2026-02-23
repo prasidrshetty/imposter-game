@@ -954,6 +954,11 @@
   <div id="guestVoteWait" class="hidden" style="text-align:center;padding:16px;background:rgba(14,10,28,0.65);border:1px solid rgba(181,108,255,0.15);border-radius:16px;font-size:14px;color:var(--muted);backdrop-filter:blur(12px);">
     <div id="discHostName" style="color:var(--purple);font-weight:700;font-size:15px;margin-bottom:4px;"></div>
     ⏳ Waiting for host to start voting...
+    <div style="margin-top:12px;">
+      <button onclick="location.reload()" style="background:rgba(79,158,255,0.15);border:1px solid rgba(79,158,255,0.3);border-radius:12px;padding:8px 16px;color:var(--blue);cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;font-size:13px;">
+        🔄 Refresh if stuck
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1365,6 +1370,8 @@ function listenToRoom(code) {
 }
 
 function handleRoomUpdate(room) {
+  console.log('📡 Firebase update:', { phase: room.phase, round: room.round, screen: [...document.querySelectorAll('.screen')].find(s => !s.classList.contains('hidden'))?.id });
+  
   // If I got kicked, go home
   if (room.kicked && room.kicked[myId]) {
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
@@ -1401,13 +1408,19 @@ function handleRoomUpdate(room) {
     } else renderDiscussion(room);
   }
   else if (phase === 'voting') {
+    console.log('🗳️ VOTING phase - current screen:', currentScreen, 'votes:', Object.keys(room.votes || {}).length);
     myVote = null;
     const confirmed = document.getElementById('myVoteConfirmed');
     if (confirmed) confirmed.classList.add('hidden');
     if (currentScreen !== 'screen-vote') {
+      console.log('➡️ Switching to vote screen NOW');
       playSound('suspense');
       renderVoting(room); goTo('vote');
-    } else renderVoting(room);
+      console.log('✅ Vote screen active');
+    } else {
+      console.log('♻️ Re-rendering vote screen');
+      renderVoting(room);
+    }
   }
   else if (phase === 'leaderboard') {
     if (currentScreen !== 'screen-leaderboard') {
@@ -1603,6 +1616,19 @@ async function startGame() {
     eliminated: null,
     kicked: {},
   });
+  
+  // Immediately transition to reveal screen (don't wait for Firebase listener)
+  currentRoom.phase = 'reveal';
+  currentRoom.citizenWord = pair[0];
+  currentRoom.impostorWord = pair[1];
+  currentRoom.impostorIds = impostorIds;
+  currentRoom.players = updatedPlayers;
+  currentRoom.round = (room.round || 0) + 1;
+  currentRoom.votes = {};
+  currentRoom.eliminated = null;
+  revealDone = false;
+  renderReveal(currentRoom);
+  goTo('reveal');
 }
 
 // ─── PLAYER STRIP ─────────────────────────────────────────────────────────────
