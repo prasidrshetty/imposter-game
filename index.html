@@ -1382,10 +1382,13 @@ function handleRoomUpdate(room) {
     if (currentScreen !== 'screen-lobby') goTo('lobby');
   }
   else if (phase === 'reveal') {
+    // Always reset reveal state when entering this phase
+    revealDone = false;
     if (currentScreen !== 'screen-reveal') {
-      revealDone = false;
       renderReveal(room); goTo('reveal');
-    } else renderReveal(room);
+    } else {
+      renderReveal(room);
+    }
     // Auto-advance to discussion when all players ready (host fires it)
     checkAllReady(room);
   }
@@ -1545,7 +1548,8 @@ function showKickConfirm(name) {
 async function startGame() {
   const room = currentRoom;
   if (!room) return;
-  const players = Object.values(room.players || {});
+  // Pre-shuffle to break any ordering from Object.values() or Firebase
+  const players = shuffle(Object.values(room.players || {}));
   if (players.length < 3) return showToast('Need at least 3 players!', 'error');
 
   // Build word pool from selected categories
@@ -1572,10 +1576,17 @@ async function startGame() {
     usedPairs: [...(room.usedPairs || []), pairKey]
   });
 
-  // PROPER random shuffle using Fisher-Yates
-  const shuffled = shuffle(players);
+  // PROPER random shuffle using Fisher-Yates (double shuffle for extra randomness)
+  const shuffled1 = shuffle(players);
+  const shuffled2 = shuffle(shuffled1); // Double shuffle to ensure randomness
   const impostorCount = Math.min(room.impostors, Math.floor(players.length / 3));
-  const impostorIds = shuffled.slice(0, impostorCount).map(p => p.id);
+  const impostorIds = shuffled2.slice(0, impostorCount).map(p => p.id);
+
+  console.log('🎲 Impostor selection:', {
+    playerOrder: players.map(p => p.name),
+    afterShuffle: shuffled2.map(p => p.name),
+    selectedImpostors: shuffled2.slice(0, impostorCount).map(p => p.name)
+  });
 
   // Reset ready flags
   const updatedPlayers = {};
@@ -1664,6 +1675,19 @@ function renderReveal(room) {
   const hostOverride = document.getElementById('hostForceDiscussion');
   if (hostOverride) {
     hostOverride.classList.toggle('hidden', !(allReady && room.hostId === myId));
+  }
+
+  // Reset ready button if not ready yet
+  const readyBtn = document.getElementById('readyBtn');
+  const amReady = players.find(p => p.id === myId)?.ready;
+  if (readyBtn && !amReady) {
+    readyBtn.disabled = false;
+    readyBtn.textContent = '✅ I\'ve Seen My Word — Ready!';
+    readyBtn.style.opacity = '1';
+  } else if (readyBtn && amReady) {
+    readyBtn.disabled = true;
+    readyBtn.textContent = '⏳ Waiting for others...';
+    readyBtn.style.opacity = '0.6';
   }
 
   // Trigger countdown only once when screen first shown
