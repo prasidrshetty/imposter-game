@@ -1677,23 +1677,21 @@ function renderReveal(room) {
     hostOverride.classList.toggle('hidden', !(allReady && room.hostId === myId));
   }
 
-  // Reset ready button if not ready yet
+  // Always update ready button state based on current Firebase data
   const readyBtn = document.getElementById('readyBtn');
   const amReady = players.find(p => p.id === myId)?.ready;
-  if (readyBtn && !amReady) {
-    readyBtn.disabled = false;
-    readyBtn.textContent = '✅ I\'ve Seen My Word — Ready!';
-    readyBtn.style.opacity = '1';
-  } else if (readyBtn && amReady) {
-    readyBtn.disabled = true;
-    readyBtn.textContent = '⏳ Waiting for others...';
-    readyBtn.style.opacity = '0.6';
+  if (readyBtn) {
+    readyBtn.disabled = amReady;
+    readyBtn.textContent = amReady ? '⏳ Waiting for others...' : '✅ I\'ve Seen My Word — Ready!';
+    readyBtn.style.opacity = amReady ? '0.6' : '1';
   }
 
-  // Trigger countdown only once when screen first shown
+  // Show word card immediately without countdown
   if (!revealDone) {
     revealDone = true;
-    startRevealCountdown();
+    // Show card immediately
+    document.getElementById('countdownOverlay').style.display = 'none';
+    document.getElementById('cardFlipScene').style.display = 'block';
   }
 }
 
