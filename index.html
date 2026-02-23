@@ -1829,7 +1829,34 @@ async function hostStopGame() {
   const btn = document.getElementById('stopDiscBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Starting vote...'; }
   playSound('suspense');
-  await storage.update(`rooms/${currentRoom.code}`, { phase: 'voting', votes: {} });
+  
+  try {
+    if (!currentRoom?.code) {
+      throw new Error('No room code available');
+    }
+    console.log('🗳️ Starting vote for room:', currentRoom.code);
+    
+    // Set a timeout fallback in case Firebase doesn't respond
+    const timeoutId = setTimeout(() => {
+      console.warn('⚠️ Firebase update timeout, forcing local phase change');
+      // Force local update to trigger UI change
+      if (currentRoom) {
+        currentRoom.phase = 'voting';
+        handleRoomUpdate({...currentRoom, phase: 'voting', votes: {}});
+      }
+    }, 3000);
+    
+    await storage.update(`rooms/${currentRoom.code}`, { phase: 'voting', votes: {} });
+    clearTimeout(timeoutId);
+    console.log('✅ Vote phase started successfully');
+  } catch (err) {
+    console.error('❌ Failed to start voting:', err);
+    showToast('Failed to start voting. Try again.', 'error');
+    if (btn) { 
+      btn.disabled = false; 
+      btn.textContent = '🗳️ Stop Discussion — Start Voting!';
+    }
+  }
 }
 
 // ─── VOTING RENDER ────────────────────────────────────────────────────────────
