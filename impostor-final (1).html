@@ -336,6 +336,11 @@
   .status-dot.green { background:var(--green); box-shadow:0 0 8px var(--green); }
   .status-dot.red { background:var(--red); }
   .status-dot.yellow { background:var(--yellow); animation:pulseRing 1s infinite; }
+
+  /* ── CRITICAL FIX: global .hidden rule for ALL elements, not just .screen ── */
+  /* Previously only .screen.hidden had display:none, so hostControls, guestWaiting,
+     myVoteConfirmed, hostVoteBtn etc. were never actually hidden by classList ops */
+  .hidden { display:none !important; }
 </style>
 </head>
 <body>
@@ -844,8 +849,12 @@ const storage = {
     } else {
       if (!memListeners[path]) memListeners[path] = [];
       memListeners[path].push(cb);
-      // Deliver current value immediately
-      cb(getNested(memDB, path));
+      // BUG FIX: Defer initial callback so it fires AFTER createRoom/joinRoom
+      // finishes setting up state and calls goTo(). Without this deferral,
+      // handleRoomUpdate fires while still on screen-create, and the screen
+      // transition races with itself causing the lobby to appear broken.
+      const currentVal = getNested(memDB, path);
+      setTimeout(() => cb(currentVal), 0);
       return () => { memListeners[path] = memListeners[path].filter(l => l !== cb); };
     }
   },
